@@ -5,7 +5,7 @@
  */
 
 var fs = require('fs');
-var PlayMusic = require('./play');
+var PlayMusic = require('playmusic');
 
 var pm = new PlayMusic();
 var config = JSON.parse(fs.readFileSync("config.json"));
