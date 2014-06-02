@@ -1,7 +1,11 @@
 /* Node-JS Google Play Music API
  *
- * Based on the work of the Google Play Music resolver for Tomahawk
- * and the gmusicapi project by Simon Weber.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * Based partially on the work of the Google Play Music resolver for Tomahawk (https://github.com/tomahawk-player/tomahawk-resolvers/blob/master/gmusic/content/contents/code/gmusic.js)
+ * and the gmusicapi project by Simon Weber (https://github.com/simon-weber/Unofficial-Google-Music-API/blob/develop/gmusicapi/protocol/mobileclient.py).
  */
 var fs = require('fs');
 var https = require('https');
@@ -11,35 +15,6 @@ var CryptoJS = require("crypto-js");
 
 
 var util = {};
-util.request = function(reqUrl, options, data, success, error) {
-    var opt = url.parse(reqUrl);
-    console.log("\nreqUrl\t", reqUrl, "\noptions\t", options, "\ndata\t", data);
-    Object.keys(options).forEach(function(k) {
-        opt[k] = options[k];
-    });
-    console.log("opt", opt);
-    var req = https.request(opt, function(res) {
-        console.log("result!", res.statusCode, res.headers);
-        res.setEncoding('utf8');
-        var body = "";
-        res.on('data', function(chunk) {
-            body += chunk;
-        });
-        res.on('end', function() {
-            if(res.statusCode === 200) {
-                success(body, res);
-            } else {
-                error(body, null, res);
-            }
-        });
-        res.on('error', function() {
-            error(null, Array.prototype.slice.apply(arguments), res);
-        });
-    });
-    if(typeof data !== "undefined" && data !== null) req.write(data);
-    req.end();
-};
-
 util.parseKeyValues = function(body) {
     var obj = {};
     body.split("\n").forEach(function(line) {
@@ -71,15 +46,23 @@ PlayMusic.prototype._accountURL = 'https://www.google.com/accounts/';
 PlayMusic.prototype.cacheTime = 300;
 
 
-PlayMusic.prototype.request = function(reqUrl, options, data, success, error) {
-    var opt = url.parse(reqUrl);
-    console.log("\nreqUrl\t", reqUrl, "\noptions\t", options, "\ndata\t", data);
-    Object.keys(options).forEach(function(k) {
-        opt[k] = options[k];
-    });
-    console.log("opt", opt);
+PlayMusic.prototype.request = function(options) {
+    //console.log("request", options);
+
+    var opt = url.parse(options.url);
+    opt.headers = {};
+    opt.method = options.method || "GET";
+    if(typeof options.options === "object") {
+        Object.keys(options.options).forEach(function(k) {
+            opt[k] = options.options[k];
+        });
+    }
+    if(typeof this._token !== "undefined") opt.headers.Authorization = "GoogleLogin auth=" + this._token;
+    opt.headers["Content-type"] = options.contentType || "application/x-www-form-urlencoded";
+
+    //console.log("opt", opt);
     var req = https.request(opt, function(res) {
-        console.log("result!", res.statusCode, res.headers);
+        //console.log("result!", res.statusCode, res.headers);
         res.setEncoding('utf8');
         var body = "";
         res.on('data', function(chunk) {
@@ -87,16 +70,16 @@ PlayMusic.prototype.request = function(reqUrl, options, data, success, error) {
         });
         res.on('end', function() {
             if(res.statusCode === 200) {
-                success(body, res);
+                options.success(body, res);
             } else {
-                error(body, null, res);
+                options.error(body, null, res);
             }
         });
         res.on('error', function() {
-            error(null, Array.prototype.slice.apply(arguments), res);
+            options.error(null, Array.prototype.slice.apply(arguments), res);
         });
     });
-    if(typeof data !== "undefined" && data !== null) req.write(data);
+    if(typeof options.data !== "undefined") req.write(options.data);
     req.end();
 };
 
@@ -118,38 +101,118 @@ PlayMusic.prototype.init = function(callback) {
 
     this._key = s1;
 
-    this._login(function() {
-        that._loadWebToken(function() {
-            that._loadSettings(function() {
-                //that._getData(function (response) {
-                    callback();
-                //});
-                that._ready = true;
+    this._login(function(response) {
+        that._token = response.Auth;
+        that._getXt(function(xt) {
+            that._xt = xt;
+            that.getSettings(function(deviceId) {
+                that._deviceId = deviceId;
+                callback();
             });
         });
     });
 };
 
-PlayMusic.prototype._getData = function(callback) {
+PlayMusic.prototype._login =  function (success, error) {
+    var that = this;
+    var data = {
+        accountType: "HOSTED_OR_GOOGLE",
+        Email: that._email.trim(),
+        Passwd: that._password.trim(),
+        service: "sj",
+        source: "node-gmusic"
+    };
+    this.request({
+        method: "POST",
+        url: this._accountURL + "ClientLogin",
+        contentType: "application/x-www-form-urlencoded",
+        data: querystring.stringify(data), // @TODO make this.request auto serialize based on contentType
+        success: function(data, res) {
+            var obj = util.parseKeyValues(data);
+            success(obj);
+        },
+        error: function(data, err, res) {
+            console.log("login failed!", res.statusCode, data, err);
+        }
+    });
+};
+
+PlayMusic.prototype._getXt = function (success, error) {
+    var that = this;
+    this.request({
+        method: "HEAD", 
+        url: this._webURL + "listen",
+        success: function(data, res) {
+            // @TODO replace with real cookie handling
+            var cookies = {};
+            res.headers['set-cookie'].forEach(function(c) {
+                var pos = c.indexOf("=");
+                if(pos > 0) cookies[c.substr(0, pos)] = c.substr(pos+1, c.indexOf(";")-(pos+1));
+            });
+
+            if (typeof cookies.xt !== "undefined") {
+                success(cookies.xt);
+            } else {
+                error("xt cookie missing");
+                console.log("xt cookie missing");
+                return;
+            }
+        },
+        error: function(data, err, res) {
+            error("request for xt cookie failed");
+            console.log("request for xt cookie failed:" + res.statusCode, data, err);
+        }
+    });
+};
+
+PlayMusic.prototype.getSettings = function(success, error) {
+    var that = this;
+
+    this.request({
+        method: "POST",
+        url: this._webURL + "services/loadsettings?" + querystring.stringify({u: 0, xt: this._xt}),
+        contentType: "application/json",
+        data: JSON.stringify({"sessionId": ""}), // @TODO make this.request auto serialize based on content type
+        success: function(body, res) {
+            var response = JSON.parse(body);
+            that._allAccess = response.settings.isSubscription;
+
+            var devices = response.settings.devices.filter(function(d) {
+                return d.type === "PHONE";
+            });
+            //console.log("res.headers", res.headers);
+            if(devices.length > 0) {
+                success(devices[0].id.slice(2));
+            } else {
+                error("Unable to find a usable device on your account, access from a mobile device and try again");
+            }
+        },
+        error: function(body, err, res) {
+            error("error loading settings");
+            //console.log("error loading settings", res.statusCode, body, err);
+        }
+    });
+};
+
+PlayMusic.prototype.getLibrary = function(callback) {
     if (this.hasOwnProperty('cachedRequest') && this.cachedRequest.time + this.cacheTime > Date.now()) {
         callback(this.cachedRequest.response);
     } else {
         var that = this;
-        util.request(
-            this._baseURL + "trackfeed",
-            { method: "POST", headers: {"Content-type": "application/x-www-form-urlencoded", "Authorization": "GoogleLogin auth=" + this._token } },
-            null,
-            function(data, res) {
+        this.request({
+            method: "POST",
+            url: this._baseURL + "trackfeed",
+            success: function(data, res) {
                 that.cachedRequest = {
                     response: JSON.parse(data),
                     time: Date.now()
                 };
                 callback(that.cachedRequest.response);
             },
-            function(data, err, res) {
+            error: function(data, err, res) {
                 console.log("error in _getData", data, res.statusCode, err);
             }
-        );
+        });
     }
 };
 
@@ -171,126 +234,23 @@ PlayMusic.prototype.getStreamUrl = function (id, callback) {
     }
 
     var qstring = querystring.stringify(qp);
-    util.request(
-        this._mobileURL + 'mplay?' + qstring, 
-        {method: "GET", headers: { "Content-type": "application/x-www-form-urlencoded", "Authorization": "GoogleLogin auth=" + this._token, "X-Device-ID": this._deviceId} },
-        null,
-        function(data, res) {
+    this.request({
+        method: "GET",
+        url: this._mobileURL + 'mplay?' + qstring,
+        options: { headers: { "X-Device-ID": this._deviceId } },
+        success: function(data, res) {
+            error("successfully retrieved stream urls, but wasn't expecting that...");  // @TODO FIX THIS!!!! see below note
             console.log(data);
         },
-        function(data, err, res) {
+        error: function(data, err, res) {
             if(res.statusCode === 302) {
+                // @TODO THIS SEEMS VERY WRONG.  I clearly have an issue that's causing the request to fail, probably should fix that instead of
+                // just relying on the fact that it's still giving me a 302 to the correct stream URL
                 callback(res.headers.location);
             } else {
                 console.log("error getting stream urls", res.statusCode, data, err);
             }
         }
-    );
+    });
 };
-
-PlayMusic.prototype._loadSettings = function (callback) {
-    var that = this;
-
-    util.request(
-        this._webURL + "services/loadsettings?" + querystring.stringify({u: 0, xt: this._xt}),
-        { method: "POST", headers: {  "Authorization": "GoogleLogin auth=" + this._token, "Content-Type": "application/json" } },
-        JSON.stringify({"sessionId": ""}),
-        function(body, res) {
-            var response = JSON.parse(body);
-            that._allAccess = response.settings.isSubscription;
-            console.log("Google Play Music All Access is ", (that._allAccess ? "enabled" : "disabled" ));
-
-            var devices = response.settings.devices.filter(function(d) {
-                return d.type === "PHONE";
-            });
-            if(devices.length > 0) {
-                that._deviceId = devices[0].id.slice(2);
-                console.log("DEVICE ID", that._deviceId);
-                console.log("using device ID from " + devices[0].carrier + " " + devices[0].manufacturer + " " + devices[0].model);
-
-                callback();
-
-            } else {
-                console.log("unable to find a device on your account");
-            }
-        },
-        function(body, err, res) {
-            console.log("error loading settings", res.statusCode, body, err);
-        }
-    );
-};
-
-PlayMusic.prototype._loadWebToken = function (callback) {
-    var that = this;
-    util.request(
-        this._webURL + "listen",
-        { method: "HEAD", headers: { "Authorization": "GoogleLogin auth=" + this._token } },
-        null,
-        function(data, res) {
-            console.log("res.headers", res.headers);
-            that._cookies = res.headers['set-cookie'];
-            var cookies = {};
-            res.headers['set-cookie'].forEach(function(c) {
-                var pos = c.indexOf("=");
-                if(pos > 0) cookies[c.substr(0, pos)] = c.substr(pos+1, c.indexOf(";")-(pos+1));
-            });
-            if (typeof cookies.xt !== "undefined") {
-                that._xt = cookies.xt;
-                callback();
-            } else {
-                console.log("xt cookie missing");
-                return;
-            }
-        },
-        function(data, err, res) {
-            console.log("request for xt cookie failed:" + res.statusCode, data, err);
-        }
-    );
-};
-
-/** Called when the login process is completed.
- * @callback loginCB
- */
-
-/** Asynchronously authenticates with the SkyJam service.
- * Only one login attempt will run at a time. If a login request is
- * already pending the callback (if one is provided) will be queued
- * to run when it is complete.
- *
- * @param {loginCB} [callback] a function to be called on completion
- */
-PlayMusic.prototype._login =  function (callback) {
-    var that = this;
-    this._token = null;
-
-    var data = {
-        accountType: "HOSTED_OR_GOOGLE",
-        Email: that._email.trim(),
-        Passwd: that._password.trim(),
-        service: "sj",
-        source: "node-gmusic"
-    };
-    util.request(this._accountURL + "ClientLogin",
-        { method: "POST", headers: { "Content-type": "application/x-www-form-urlencoded" }},
-        querystring.stringify(data),
-        function(data, res) {
-            var obj = util.parseKeyValues(data);
-            console.log("login success!", obj);
-            that._token = obj.Auth;
-            callback();
-        },
-        function(data, err, res) {
-            console.log("login failed!", res.statusCode, data, err);
-        }
-    );
-};
-
-
-var pm = new PlayMusic();
-pm.init(function() {
-    console.log("============================================================");
-//    pm.getStreamUrl("84df1e4e-6b76-3147-9a78-a44becc28dc5");
-    //pm.getStreamUrl("6f7120c8-4454-316e-a3ea-df042887fe00");
-    //pm.getStreamUrl("d895bf67-c3d8-3b4a-b7e8-cc5df5c4e0b2");
-    pm.getStreamUrl("0dfc52a6-a9e1-3471-845c-f99eaa832ce2", console.log);
-});
+module.exports = PlayMusic;
