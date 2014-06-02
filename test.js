@@ -4,10 +4,12 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ 
  */
 
+var fs = require('fs');
 var PlayMusic = require('./play');
 
 var pm = new PlayMusic();
-pm.init(function() {
+var config = JSON.parse(fs.readFileSync("config.json"));
+pm.init(config, function() {
     pm.getLibrary(function(library) {
         var song = library.data.items.pop();
         console.log(song);

@@ -9,7 +9,6 @@
  * Based partially on the work of the Google Play Music resolver for Tomahawk (https://github.com/tomahawk-player/tomahawk-resolvers/blob/master/gmusic/content/contents/code/gmusic.js)
  * and the gmusicapi project by Simon Weber (https://github.com/simon-weber/Unofficial-Google-Music-API/blob/develop/gmusicapi/protocol/mobileclient.py).
  */
-var fs = require('fs');
 var https = require('https');
 var querystring = require('querystring');
 var url = require('url');
@@ -49,8 +48,6 @@ PlayMusic.prototype.cacheTime = 300;
 
 
 PlayMusic.prototype.request = function(options) {
-    //console.log("request", options);
-
     var opt = url.parse(options.url);
     opt.headers = {};
     opt.method = options.method || "GET";
@@ -62,9 +59,7 @@ PlayMusic.prototype.request = function(options) {
     if(typeof this._token !== "undefined") opt.headers.Authorization = "GoogleLogin auth=" + this._token;
     opt.headers["Content-type"] = options.contentType || "application/x-www-form-urlencoded";
 
-    //console.log("opt", opt);
     var req = https.request(opt, function(res) {
-        //console.log("result!", res.statusCode, res.headers);
         res.setEncoding('utf8');
         var body = "";
         res.on('data', function(chunk) {
@@ -86,9 +81,8 @@ PlayMusic.prototype.request = function(options) {
 };
 
 
-PlayMusic.prototype.init = function(callback) {
+PlayMusic.prototype.init = function(config, callback) {
     var that = this;
-    var config = JSON.parse(fs.readFileSync("config.json"));
 
     this._email = config.email;
     this._password = config.password;
@@ -97,8 +91,8 @@ PlayMusic.prototype.init = function(callback) {
     var s1 = CryptoJS.enc.Base64.parse('VzeC4H4h+T2f0VI180nVX8x+Mb5HiTtGnKgH52Otj8ZCGDz9jRWyHb6QXK0JskSiOgzQfwTY5xgLLSdUSreaLVMsVVWfxfa8Rw==');
     var s2 = CryptoJS.enc.Base64.parse('ZAPnhUkYwQ6y5DdQxWThbvhJHN8msQ1rqJw0ggKdufQjelrKuiGGJI30aswkgCWTDyHkTGK9ynlqTkJ5L4CiGGUabGeo8M6JTQ==');
 
-    for (var idx = 0; idx < s1.words.length; idx++) {
-        s1.words[ idx ] ^= s2.words[ idx ];
+    for(var idx = 0; idx < s1.words.length; idx++) {
+        s1.words[idx] ^= s2.words[idx];
     }
 
     this._key = s1;
@@ -182,7 +176,7 @@ PlayMusic.prototype.getSettings = function(success, error) {
             var devices = response.settings.devices.filter(function(d) {
                 return d.type === "PHONE";
             });
-            //console.log("res.headers", res.headers);
+
             if(devices.length > 0) {
                 success(devices[0].id.slice(2));
             } else {
@@ -191,7 +185,6 @@ PlayMusic.prototype.getSettings = function(success, error) {
         },
         error: function(body, err, res) {
             error("error loading settings");
-            //console.log("error loading settings", res.statusCode, body, err);
         }
     });
 };
@@ -241,13 +234,11 @@ PlayMusic.prototype.getStreamUrl = function (id, callback) {
         url: this._mobileURL + 'mplay?' + qstring,
         options: { headers: { "X-Device-ID": this._deviceId } },
         success: function(data, res) {
-            error("successfully retrieved stream urls, but wasn't expecting that...");  // @TODO FIX THIS!!!! see below note
+            error("successfully retrieved stream urls, but wasn't expecting that...");
             console.log(data);
         },
         error: function(data, err, res) {
             if(res.statusCode === 302) {
-                // @TODO THIS SEEMS VERY WRONG.  I clearly have an issue that's causing the request to fail, probably should fix that instead of
-                // just relying on the fact that it's still giving me a 302 to the correct stream URL
                 callback(res.headers.location);
             } else {
                 console.log("error getting stream urls", res.statusCode, data, err);
