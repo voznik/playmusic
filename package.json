@@ -1,6 +1,6 @@
 {
     "name": "playmusic",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Node JS Google Play Music API.  Supports All Access",
     "keywords": ["gmusic", "gmusicapi", "google play", "play music", "all access"],
     "homepage": "https://www.github.com/jamon/playmusic",

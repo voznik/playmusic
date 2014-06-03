@@ -40,7 +40,7 @@ util.salt = function(len) {
 
 var PlayMusic = function() {};
 
-PlayMusic.prototype._baseURL = 'https://www.googleapis.com/sj/v1/';
+PlayMusic.prototype._baseURL = 'https://www.googleapis.com/sj/v1.5/';
 PlayMusic.prototype._webURL = 'https://play.google.com/music/';
 PlayMusic.prototype._mobileURL = 'https://android.clients.google.com/music/';
 PlayMusic.prototype._accountURL = 'https://www.google.com/accounts/';
@@ -189,9 +189,10 @@ PlayMusic.prototype.getSettings = function(success, error) {
     });
 };
 
-PlayMusic.prototype.getLibrary = function(callback) {
+PlayMusic.prototype.getLibrary = function(success, error) {
+    // @TODO cache to disk
     if (this.hasOwnProperty('cachedRequest') && this.cachedRequest.time + this.cacheTime > Date.now()) {
-        callback(this.cachedRequest.response);
+        success(this.cachedRequest.response);
     } else {
         var that = this;
         this.request({
@@ -202,7 +203,7 @@ PlayMusic.prototype.getLibrary = function(callback) {
                     response: JSON.parse(data),
                     time: Date.now()
                 };
-                callback(that.cachedRequest.response);
+                success(that.cachedRequest.response);
             },
             error: function(data, err, res) {
                 console.log("error in _getData", data, res.statusCode, err);
@@ -211,7 +212,7 @@ PlayMusic.prototype.getLibrary = function(callback) {
     }
 };
 
-PlayMusic.prototype.getStreamUrl = function (id, callback) {
+PlayMusic.prototype.getStreamUrl = function (id, success, error) {
     var salt = util.salt(13);
     var sig = CryptoJS.HmacSHA1(id + salt, this._key).toString(util.Base64);
     var qp = {
@@ -239,11 +240,58 @@ PlayMusic.prototype.getStreamUrl = function (id, callback) {
         },
         error: function(data, err, res) {
             if(res.statusCode === 302) {
-                callback(res.headers.location);
+                success(res.headers.location);
             } else {
                 console.log("error getting stream urls", res.statusCode, data, err);
             }
         }
     });
 };
-module.exports = PlayMusic;
+
+PlayMusic.prototype.search = function (text, maxResults, success, error) {
+    var qp = {
+        q: text,
+        "max-results": maxResults
+    };
+    var qstring = querystring.stringify(qp);
+    this.request({
+        method: "GET",
+        url: this._baseURL + 'query?' + qstring,
+        success: function(data, res) {
+            success(JSON.parse(data));
+        },
+        error: function(data, err, res) {
+            console.log("error getting search results", res.statusCode, data, err);
+        }
+    });
+};
+
+PlayMusic.prototype.getPlayLists = function (success, error) {
+    this.request({
+        method: "POST",
+        url: this._baseURL + 'playlistfeed',
+        success: function(data, res) {
+            success(JSON.parse(data));
+        },
+        error: function(data, err, res) {
+            console.log("error getting playlist results", res.statusCode, data, err);
+        }
+    });
+};
+
+PlayMusic.prototype.getPlayListEntries = function (success, error) {
+    this.request({
+        method: "POST",
+        url: this._baseURL + 'plentryfeed',
+        success: function(data, res) {
+            success(JSON.parse(data));
+        },
+        error: function(data, err, res) {
+            console.log("error getting playlist results", res.statusCode, data, err);
+        }
+    });
+};
+
+
+
+module.exports = exports = PlayMusic;
