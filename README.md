@@ -14,6 +14,7 @@ Future
   * Implement browser version?
 * Add features
   * complete API
+* Rewrite all responses from services to be more consistent, useful?
 * Suggestions?  submit an issue!
 
 
