@@ -5,8 +5,59 @@ Written by Jamon Terrell <git@jamonterrell.com>
 
 How to Use
 ----
-* rename config.json.default to config.json and add your credentials
-* See test.js for example use
+
+Initialization
+```
+var PlayMusic = require('../');
+
+var pm = new PlayMusic();
+
+pm.init({email: "email@address.com", password: "password"}, function() {
+  // place code here
+})
+```
+
+Retrieve List of Songs in your Library, retrieve the stream URL
+```
+    pm.getLibrary(function(library) {
+        var song = library.data.items.pop();
+        console.log(song);
+        pm.getStreamUrl(song.id, function(streamUrl) {
+            console.log(streamUrl);
+        });
+    });
+```
+
+Search for a song
+```
+    pm.search("bastille lost fire", 5, function(data) {
+        var song = data.entries.sort(function(a, b) {
+            return a.score < b.score;
+        }).shift();
+        console.log(song);
+        pm.getStreamUrl(song.track.nid, function(streamUrl) {
+            console.log(streamUrl);
+        });
+    }, function(err) {
+        console.log(err);
+    });
+```
+
+Retrieve Playlists
+```
+    pm.getPlayLists(function(data) {
+        console.log(data.data.items);
+    });
+
+    pm.getPlayListEntries(function(data) {
+        console.log(data.data.items);
+    });
+```
+
+Retrieve the Stream URL for a song by id
+```
+    pm.getStreamUrl("Thvfmp2be3c7kbp6ny4arxckz54", console.log);
+```
 
 Future
 ----
