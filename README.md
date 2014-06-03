@@ -10,7 +10,6 @@ How to Use
 
 Future
 ----
-* Turn into npm module
 * Externalize all node.js specific code, add base classes for re-usable functionality
   * Implement browser version?
 * Add features
