@@ -3,6 +3,8 @@ Node-JS Google Play Music API
 
 Written by Jamon Terrell <git@jamonterrell.com>
 
+This project is not endorsed by of affiliated with Google in any way.
+
 How to Use
 ----
 
