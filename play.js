@@ -79,7 +79,7 @@ PlayMusic.prototype.request = function(options) {
 };
 
 
-PlayMusic.prototype.init = function(config, callback) {
+PlayMusic.prototype.init = function(config, success, error) {
     var that = this;
 
     this._email = config.email;
@@ -108,11 +108,15 @@ PlayMusic.prototype.init = function(config, callback) {
 
                 if(devices.length > 0) {
                     that._deviceId = devices[0].id.slice(2);
-                    callback();
+                    that.success(success, response, res);
                 } else {
                     that.error(error, "Unable to find a usable device on your account, access from a mobile device and try again", body, null, res);
                 }
+            }, function(message, data, err, res) {
+                that.error(error, "Login Failed, unable to get settings: " + message, data, err, res);
             });
+        }, function(message, data, err, res) {
+            that.error(error, "Login Failed, unable to get xt (part of google auth): " + message, data, err, res);
         });
     });
 };
