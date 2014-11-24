@@ -3,18 +3,71 @@ Node-JS Google Play Music API
 
 Written by Jamon Terrell <git@jamonterrell.com>
 
+This project is not endorsed by of affiliated with Google in any way.
+
 How to Use
 ----
-* rename config.json.default to config.json and add your credentials
-* See test.js for example use
+
+Initialization
+```
+var PlayMusic = require('../');
+
+var pm = new PlayMusic();
+
+pm.init({email: "email@address.com", password: "password"}, function() {
+  // place code here
+})
+```
+
+Retrieve List of Songs in your Library, retrieve the stream URL
+```
+    pm.getLibrary(function(library) {
+        var song = library.data.items.pop();
+        console.log(song);
+        pm.getStreamUrl(song.id, function(streamUrl) {
+            console.log(streamUrl);
+        });
+    });
+```
+
+Search for a song
+```
+    pm.search("bastille lost fire", 5, function(data) {
+        var song = data.entries.sort(function(a, b) {
+            return a.score < b.score;
+        }).shift();
+        console.log(song);
+        pm.getStreamUrl(song.track.nid, function(streamUrl) {
+            console.log(streamUrl);
+        });
+    }, function(err) {
+        console.log(err);
+    });
+```
+
+Retrieve Playlists
+```
+    pm.getPlayLists(function(data) {
+        console.log(data.data.items);
+    });
+
+    pm.getPlayListEntries(function(data) {
+        console.log(data.data.items);
+    });
+```
+
+Retrieve the Stream URL for a song by id
+```
+    pm.getStreamUrl("Thvfmp2be3c7kbp6ny4arxckz54", console.log);
+```
 
 Future
 ----
-* Turn into npm module
 * Externalize all node.js specific code, add base classes for re-usable functionality
   * Implement browser version?
 * Add features
   * complete API
+* Rewrite all responses from services to be more consistent, useful?
 * Suggestions?  submit an issue!
 
 
