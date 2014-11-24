@@ -204,7 +204,7 @@ PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(suc
         method: "POST",
         url: this._baseURL + "trackfeed",
         success: function(data, res) {
-            that.success(success, data, res);
+            that.success(success, JSON.parse(data), res);
         },
         error: function(data, err, res) {
             that.error("error retrieving all tracks", data, err, res);
