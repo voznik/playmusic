@@ -384,7 +384,7 @@ PlayMusic.prototype.getAllAccessTrack = function (trackId, success, error) {
  * @param success function(artistInfo) - success callback
  * @param error function(data, err, res) - error callback
  */
-PlayMusic.prototype.getArtist = function (artistInfo, topTrackCount, relatedArtistCount, success, error) {
+PlayMusic.prototype.getArtist = function (artistInfo, includeAlbums, topTrackCount, relatedArtistCount, success, error) {
     this.request({
         method: "GET",
         url: this._baseURL + "fetchartist?" + querystring.stringify({nid: artistId, "include-albums": includeAlbums, "num-top-tracks": topTrackCount, "num-related-artists": relatedArtistCount, alt: "json"}),
