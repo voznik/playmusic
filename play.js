@@ -161,6 +161,12 @@ PlayMusic.prototype._getXt = function (success, error) {
     });
 };
 
+/**
+ * Returns settings / device ids authorized for account.
+ *
+ * @param success function(settings) - success callback
+ * @param error function(data, err, res) - error callback
+ */
 PlayMusic.prototype.getSettings = function(success, error) {
     var that = this;
 
@@ -189,7 +195,13 @@ PlayMusic.prototype.getSettings = function(success, error) {
     });
 };
 
-PlayMusic.prototype.getLibrary = function(success, error) {
+/**
+ * Returns list of all tracks
+ *
+ * @param success function(trackList) - success callback
+ * @param error function(data, err, res) - error callback
+ */
+PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(success, error) {
     // @TODO cache to disk
     if (this.hasOwnProperty('cachedRequest') && this.cachedRequest.time + this.cacheTime > Date.now()) {
         success(this.cachedRequest.response);
@@ -212,6 +224,13 @@ PlayMusic.prototype.getLibrary = function(success, error) {
     }
 };
 
+/**
+ * Returns stream URL for a track.
+ *
+ * @param id string - track id, hyphenated is preferred, but "nid" will work for all access tracks (not uploaded ones)
+ * @param success function(streamUrl) - success callback
+ * @param error function(data, err, res) - error callback
+ */
 PlayMusic.prototype.getStreamUrl = function (id, success, error) {
     var salt = util.salt(13);
     var sig = CryptoJS.HmacSHA1(id + salt, this._key).toString(util.Base64);
@@ -248,6 +267,14 @@ PlayMusic.prototype.getStreamUrl = function (id, success, error) {
     });
 };
 
+/**
+ * Searches for All Access tracks.
+ *
+ * @param text string - search text
+ * @param maxResults int - max number of results to return
+ * @param success function(searchResults) - success callback
+ * @param error function(data, err, res) - error callback
+ */
 PlayMusic.prototype.search = function (text, maxResults, success, error) {
     var qp = {
         q: text,
@@ -266,6 +293,12 @@ PlayMusic.prototype.search = function (text, maxResults, success, error) {
     });
 };
 
+/**
+ * Returns list of all playlists.
+ *
+ * @param success function(playlists) - success callback
+ * @param error function(data, err, res) - error callback
+ */
 PlayMusic.prototype.getPlayLists = function (success, error) {
     this.request({
         method: "POST",
@@ -279,6 +312,12 @@ PlayMusic.prototype.getPlayLists = function (success, error) {
     });
 };
 
+/**
+ * Returns tracks on all playlists.
+ *
+ * @param success function(playlistEntries) - success callback
+ * @param error function(data, err, res) - error callback
+ */
 PlayMusic.prototype.getPlayListEntries = function (success, error) {
     this.request({
         method: "POST",
@@ -292,6 +331,70 @@ PlayMusic.prototype.getPlayListEntries = function (success, error) {
     });
 };
 
+/**
+ * Returns info about an All Access album.  Does not work for uploaded songs.
+ *
+ * @param trackId string All Access album "nid" -- WILL NOT ACCEPT album "id" (requires "T" id, not hyphenated id)
+ * @param includeTracks boolean -- include track list
+ * @param success function(albumList) - success callback
+ * @param error function(data, err, res) - error callback
+ */
+PlayMusic.prototype.getAlbum = function (albumId, includeTracks, success, error) {
+    this.request({
+        method: "GET",
+        url: this._baseURL + "fetchalbum?" + querystring.stringify({nid: albumId, "include-tracks": includeTracks, alt: "json"}),
+        success: function(data, res) {
+            success(JSON.parse(data));
 
+        },
+        error: function(data, err, res) {
+            error("error getting album tracks", res.statusCode, data, err);
+        }
+    });
+};
 
+/**
+ * Returns info about an All Access track.  Does not work for uploaded songs.
+ *
+ * @param trackId string All Access track "nid" -- WILL NOT ACCEPT track "id" (requires "T" id, not hyphenated id)
+ * @param success function(trackInfo) - success callback
+ * @param error function(data, err, res) - error callback
+ */
+PlayMusic.prototype.getAllAccessTrack = function (trackId, success, error) {
+    this.request({
+        method: "GET",
+        url: this._baseURL + "fetchtrack?" + querystring.stringify({nid: trackId, alt: "json"}),
+        success: function(data, res) {
+            success(JSON.parse(data));
+
+        },
+        error: function(data, err, res) {
+            error("error getting album tracks", res.statusCode, data, err);
+        }
+    });
+};
+
+/**
+ * Returns Artist Info, top tracks, albums, related artists
+ *
+ * @param artistId string - not sure which id this is
+ * @param includeAlbums boolean - should album list be included in result
+ * @param topTrackCount int - number of top tracks to return
+ * @param relatedArtistCount int - number of related artists to return
+ * @param success function(artistInfo) - success callback
+ * @param error function(data, err, res) - error callback
+ */
+PlayMusic.prototype.getArtist = function (artistInfo, topTrackCount, relatedArtistCount, success, error) {
+    this.request({
+        method: "GET",
+        url: this._baseURL + "fetchartist?" + querystring.stringify({nid: artistId, "include-albums": includeAlbums, "num-top-tracks": topTrackCount, "num-related-artists": relatedArtistCount, alt: "json"}),
+        success: function(data, res) {
+            success(JSON.parse(data));
+
+        },
+        error: function(data, err, res) {
+            error("error getting album tracks", res.statusCode, data, err);
+        }
+    });
+};
 module.exports = exports = PlayMusic;
