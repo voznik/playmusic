@@ -99,9 +99,19 @@ PlayMusic.prototype.init = function(config, callback) {
         that._token = response.Auth;
         that._getXt(function(xt) {
             that._xt = xt;
-            that.getSettings(function(deviceId) {
-                that._deviceId = deviceId;
-                callback();
+            that.getSettings(function(response) {
+                that._allAccess = response.settings.isSubscription;
+
+                var devices = response.settings.devices.filter(function(d) {
+                    return d.type === "PHONE";
+                });
+
+                if(devices.length > 0) {
+                    that._deviceId = devices[0].id.slice(2);
+                    callback();
+                } else {
+                    that.error(error, "Unable to find a usable device on your account, access from a mobile device and try again", body, null, res);
+                }
             });
         });
     });
@@ -173,18 +183,7 @@ PlayMusic.prototype.getSettings = function(success, error) {
         data: JSON.stringify({"sessionId": ""}),
         success: function(body, res) {
             var response = JSON.parse(body);
-            that._allAccess = response.settings.isSubscription;
-
-            var devices = response.settings.devices.filter(function(d) {
-                return d.type === "PHONE";
-            });
-
-            if(devices.length > 0) {
-                // @TODO make this match other APIs, fix the places that call it
-                success(devices[0].id.slice(2));
-            } else {
-                that.error(error, "Unable to find a usable device on your account, access from a mobile device and try again", body, null, res);
-            }
+            that.success(success, response, res);
         },
         error: function(body, err, res) {
             that.error(error, "error loading settings", body, err, res);
@@ -400,8 +399,8 @@ PlayMusic.prototype.success = function (success, data) {
 };
 PlayMusic.prototype.error = function (error, data, err, res) {
     error = typeof success === "function" ? success : function() {
-        console.log(util.inspect(arguments, {depth: null, colors: true}));
+        console.error(error, util.inspect(err, {depth: 2, colors: true}));
     };
-    error(data, err, res);
+    error(error, data, err, res);
 };
 module.exports = exports = PlayMusic;
