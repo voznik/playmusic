@@ -344,12 +344,12 @@ PlayMusic.prototype.addPlaylist = function (playlistName, success, error) {
 /**
 * Adds a track to end of a playlist.
 *
-* @param playlistId int - the playlist id
 * @param songId int - the song id
+* @param playlistId int - the playlist id
 * @param success function(mutationStatus) - success callback
 * @param error function(data, err, res) - error callback
 */
-PlayMusic.prototype.addTrackToPlaylist = function (playlistId, songId, success, error) {
+PlayMusic.prototype.addTrackToPlaylist = function (songId, playlistId, success, error) {
     var that = this;
     var mutations = [
         {
