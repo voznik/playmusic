@@ -108,7 +108,7 @@ PlayMusic.prototype.init = function(config, success, error) {
 
                 if(devices.length > 0) {
                     that._deviceId = devices[0].id.slice(2);
-                    that.success(success, response, res);
+                    that.success(success, null, response);
                 } else {
                     that.error(error, "Unable to find a usable device on your account, access from a mobile device and try again", body, null, res);
                 }

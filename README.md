@@ -71,8 +71,8 @@ Retrieve information about an album or artist (All Access Only!!!)
     // getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, success, error]
     pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2);
 
-    // getAlbum - albumId[, success, error]
-    pm.getAlbum('Bfn67zo6q3ekh35eaorkq5untmi');
+    // getAlbum - albumId, includeTracks[, success, error]
+    pm.getAlbum('Bfn67zo6q3ekh35eaorkq5untmi', true);
 ```
 
 Get Google Play Music Settings
