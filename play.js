@@ -13,6 +13,7 @@ var https = require('https');
 var querystring = require('querystring');
 var url = require('url');
 var CryptoJS = require("crypto-js");
+var uuid = require('node-uuid');
 var util = require('util');
 
 var pmUtil = {};
@@ -148,7 +149,7 @@ PlayMusic.prototype._login =  function (success, error) {
 PlayMusic.prototype._getXt = function (success, error) {
     var that = this;
     this.request({
-        method: "HEAD", 
+        method: "HEAD",
         url: this._webURL + "listen",
         success: function(data, res) {
             // @TODO replace with real cookie handling
@@ -307,6 +308,102 @@ PlayMusic.prototype.getPlayLists = function (success, error) {
 };
 
 /**
+* Creates a new playlist
+*
+* @param playlistName string - the playlist name
+* @param success function(mutationStatus) - success callback
+* @param error function(data, err, res) - error callback
+*/
+PlayMusic.prototype.addPlayList = function (playlistName, success, error) {
+    var that = this;
+    var mutations = [
+    {
+        "create": {
+            "creationTimestamp": -1,
+            "deleted": false,
+            "lastModifiedTimestamp": 0,
+            "name": playlistName,
+            "type": "USER_GENERATED"
+        }
+    }
+    ];
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'playlistbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations}),
+        success: function(data, res) {
+            that.success(success, JSON.parse(data), res);
+        },
+        error: function(data, err, res) {
+            that.error(error, "error adding a playlist", data, err, res);
+        }
+    });
+};
+
+/**
+* Adds a track to end of a playlist.
+*
+* @param songId int - the song id
+* @param playlistId int - the playlist id
+* @param success function(mutationStatus) - success callback
+* @param error function(data, err, res) - error callback
+*/
+PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, error) {
+    var that = this;
+    var mutations = [
+        {
+            "create": {
+                "clientId": uuid.v1(),
+                "creationTimestamp": "-1",
+                "deleted": "false",
+                "lastModifiedTimestamp": "0",
+                "playlistId": playlistId,
+                "source": (songId.indexOf("T") == 0 ? "2" : "1"),
+                "trackId": songId
+            }
+        }
+    ];
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations}),
+        success: function(data, res) {
+            that.success(success, JSON.parse(data), res);
+        },
+        error: function(data, err, res) {
+            that.error(error, "error adding a track into a playlist", data, err, res);
+        }
+    });
+};
+
+/**
+* Removes given entry id from playlist entries
+*
+* @param entryId int - the entry id. You can get this from getPlayListEntries
+* @param success function(mutationStatus) - success callback
+* @param error function(data, err, res) - error callback
+*/
+PlayMusic.prototype.removePlayListEntry = function (entryId, success, error) {
+    var that = this;
+    var mutations = [ { "delete": entryId } ];
+
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations}),
+        success: function(data, res) {
+            that.success(success, JSON.parse(data), res);
+        },
+        error: function(data, err, res) {
+            that.error(error, "error removing a playlist entry", data, err, res);
+        }
+    });
+};
+
+/**
  * Returns tracks on all playlists.
  *
  * @param success function(playlistEntries) - success callback
@@ -329,7 +426,7 @@ PlayMusic.prototype.getPlayListEntries = function (success, error) {
 /**
  * Returns info about an All Access album.  Does not work for uploaded songs.
  *
- * @param trackId string All Access album "nid" -- WILL NOT ACCEPT album "id" (requires "T" id, not hyphenated id)
+ * @param albumId string All Access album "nid" -- WILL NOT ACCEPT album "id" (requires "T" id, not hyphenated id)
  * @param includeTracks boolean -- include track list
  * @param success function(albumList) - success callback
  * @param error function(data, err, res) - error callback
