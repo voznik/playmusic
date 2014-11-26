@@ -314,7 +314,7 @@ PlayMusic.prototype.getPlayLists = function (success, error) {
 * @param success function(mutationStatus) - success callback
 * @param error function(data, err, res) - error callback
 */
-PlayMusic.prototype.addPlaylist = function (playlistName, success, error) {
+PlayMusic.prototype.addPlayList = function (playlistName, success, error) {
     var that = this;
     var mutations = [
     {
@@ -336,7 +336,7 @@ PlayMusic.prototype.addPlaylist = function (playlistName, success, error) {
             that.success(success, JSON.parse(data), res);
         },
         error: function(data, err, res) {
-            that.error(error, "error adding a track into a playlist", data, err, res);
+            that.error(error, "error adding a playlist", data, err, res);
         }
     });
 };
@@ -349,7 +349,7 @@ PlayMusic.prototype.addPlaylist = function (playlistName, success, error) {
 * @param success function(mutationStatus) - success callback
 * @param error function(data, err, res) - error callback
 */
-PlayMusic.prototype.addTrackToPlaylist = function (songId, playlistId, success, error) {
+PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, error) {
     var that = this;
     var mutations = [
         {
@@ -374,6 +374,31 @@ PlayMusic.prototype.addTrackToPlaylist = function (songId, playlistId, success, 
         },
         error: function(data, err, res) {
             that.error(error, "error adding a track into a playlist", data, err, res);
+        }
+    });
+};
+
+/**
+* Removes given entry id from playlist entries
+*
+* @param entryId int - the entry id. You can get this from getPlayListEntries
+* @param success function(mutationStatus) - success callback
+* @param error function(data, err, res) - error callback
+*/
+PlayMusic.prototype.removePlayListEntry = function (entryId, success, error) {
+    var that = this;
+    var mutations = [ { "delete": entryId } ];
+
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations}),
+        success: function(data, res) {
+            that.success(success, JSON.parse(data), res);
+        },
+        error: function(data, err, res) {
+            that.error(error, "error removing a playlist entry", data, err, res);
         }
     });
 };
