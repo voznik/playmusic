@@ -5,6 +5,8 @@ Written by Jamon Terrell <git@jamonterrell.com>
 
 This project is not endorsed by of affiliated with Google in any way.
 
+The library requires Google credentials, but does not require an All Access subscription on that account. It also requires a mobile device registered against that account. Ensure you have signed into the app on a phone and that you have played any amount of music. This will authorise the device that the library will masquerade as.
+
 How to Use
 ----
 
@@ -97,7 +99,7 @@ pm.getPlayLists();
 pm.getPlayListEntries();
 
 // getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, success, error]
-pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2); 
+pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2);
 
 // getStreamUrl for All Access - sj#track -> storeId
 pm.getStreamUrl('Tsbbwp6r2wpwxb55noc6b26kwq4');
@@ -132,4 +134,3 @@ Attribution
 ----
 Based partially on the work of the Google Play Music resolver for Tomahawk (https://github.com/tomahawk-player/tomahawk-resolvers/blob/master/gmusic/content/contents/code/gmusic.js)
 and the gmusicapi project by Simon Weber (https://github.com/simon-weber/Unofficial-Google-Music-API/blob/develop/gmusicapi/protocol/mobileclient.py).
-

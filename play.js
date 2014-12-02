@@ -104,7 +104,7 @@ PlayMusic.prototype.init = function(config, success, error) {
                 that._allAccess = response.settings.isSubscription;
 
                 var devices = response.settings.devices.filter(function(d) {
-                    return d.type === "PHONE";
+                    return d.type === "PHONE" || d.type === "IOS";
                 });
 
                 if(devices.length > 0) {
