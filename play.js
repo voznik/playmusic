@@ -499,9 +499,9 @@ PlayMusic.prototype.success = function (success, data) {
     success(data);
 };
 PlayMusic.prototype.error = function (error, data, err, res) {
-    error = typeof success === "function" ? success : function() {
+    error = typeof error === "function" ? error : function() {
         console.error(error, util.inspect(err, {depth: 2, colors: true}));
     };
-    error(error, data, err, res);
+    error(data, err, res);
 };
 module.exports = exports = PlayMusic;
