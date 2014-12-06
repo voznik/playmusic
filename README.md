@@ -118,11 +118,12 @@ pm.getStreamUrl(searchResults[0].id);
 
 Future
 ----
-* Add features
-  * modify playlists / etc
-  * create stations / get songs from stations/genres
+* create stations / get songs from stations/genres
+* provide better examples
+* improve authentication
+* externalize cookie handling
+* explore providing a higher level api that allows easy following of relationships between objects
 * Suggestions?  submit an issue!
-
 
 License
 ----
@@ -132,5 +133,11 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 Attribution
 ----
-Based partially on the work of the Google Play Music resolver for Tomahawk (https://github.com/tomahawk-player/tomahawk-resolvers/blob/master/gmusic/content/contents/code/gmusic.js)
-and the gmusicapi project by Simon Weber (https://github.com/simon-weber/Unofficial-Google-Music-API/blob/develop/gmusicapi/protocol/mobileclient.py).
+
+Special thanks go out to the following individuals and projects:
+* [Google Play Music resolver for Tomahawk](https://github.com/tomahawk-player/tomahawk-resolvers/blob/master/gmusic/content/contents/code/gmusic.js) - information on the gmusic api
+* [gmusicapi project](https://github.com/simon-weber/Unofficial-Google-Music-API/blob/develop/gmusicapi/protocol/mobileclient.py)  by Simon Weber and others - information on the gmusic api, also special thanks to their IRC support of my many questions
+* [wyozi](https://github.com/wyozi) - playlist management support
+* [Jonathan Cremin](https://github.com/kudos) and [match-audio](https://match.audio/) - contributions including support for new api changes and documentation for authorization, bug fixes for error handling
+* [Jan Smolders](https://github.com/jansmolders86) and [MediacenterJS](http://mediacenterjs.com/) - testing, troubleshooting and other feedback
+* [Puneeth Uttla](https://github.com/kiwiluver75) - authentication workaround
