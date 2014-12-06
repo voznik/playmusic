@@ -120,6 +120,7 @@ Future
 ----
 * create stations / get songs from stations/genres
 * provide better examples
+* add automated integration testing so semaphore build results are useful
 * improve authentication
 * externalize cookie handling
 * explore providing a higher level api that allows easy following of relationships between objects
