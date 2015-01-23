@@ -379,6 +379,38 @@ PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, 
 };
 
 /**
+* Increments track's playcount
+*
+* @param songId int - the song id. See http://bit.ly/1L4U6oK for id requirements.
+* @param success function(mutationStatus) - success callback
+* @param error function(data, err, res) - error callback
+*/
+PlayMusic.prototype.incrementTrackPlaycount = function (songId, success, error) {
+    var that = this;
+    var stats = [
+        {
+            "id": songId,
+            "incremental_plays": "1",
+            "last_play_time_millis": Date.now().toString(),
+            "type": (songId.indexOf("T") == 0 ? "2" : "1"),
+            "track_events": []
+        }
+    ];
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'trackstats?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"track_stats": stats}),
+        success: function(data, res) {
+            that.success(success, JSON.parse(data), res);
+        },
+        error: function(data, err, res) {
+            that.error(error, "error incrementing track's playcount", data, err, res);
+        }
+    });
+};
+
+/**
 * Removes given entry id from playlist entries
 *
 * @param entryId int - the entry id. You can get this from getPlayListEntries
