@@ -46,7 +46,7 @@ PlayMusic.prototype._webURL = 'https://play.google.com/music/';
 PlayMusic.prototype._mobileURL = 'https://android.clients.google.com/music/';
 PlayMusic.prototype._accountURL = 'https://www.google.com/accounts/';
 
-PlayMusic.prototype.request = function(options) {
+PlayMusic.prototype.request = function(options, callback) {
     var opt = url.parse(options.url);
     opt.headers = {};
     opt.method = options.method || "GET";
@@ -57,7 +57,6 @@ PlayMusic.prototype.request = function(options) {
     }
     if(typeof this._token !== "undefined") opt.headers.Authorization = "GoogleLogin auth=" + this._token;
     opt.headers["Content-type"] = options.contentType || "application/x-www-form-urlencoded";
-
     var req = https.request(opt, function(res) {
         res.setEncoding('utf8');
         var body = "";
@@ -65,14 +64,29 @@ PlayMusic.prototype.request = function(options) {
             body += chunk;
         });
         res.on('end', function() {
-            if(res.statusCode === 200) {
-                options.success(body, res);
-            } else {
-                options.error(body, null, res);
+            var err;
+            if(res.statusCode >= 400) {
+                err = new Error(res.statusCode + " error from server");
+                err.statusCode = res.statusCode;
+                err.response = res;
             }
+
+            var contentType = (typeof res.headers["content-type"] !== "string") ? null : res.headers["content-type"].split(";", 1)[0].toLowerCase();
+            var response = body;
+            try {
+                if(contentType === "application/json") {
+                    response = JSON.parse(response);
+                }
+            } catch (e) {
+                if(typeof callback === "function") callback(new Error("unable to parse json response: " + e), null, res);
+            }
+            if(typeof callback === "function") callback(err, response, res);
         });
-        res.on('error', function() {
-            options.error(null, Array.prototype.slice.apply(arguments), res);
+        res.on('error', function(error) {
+            var err = new Error("Error making https request");
+            err.error = error;
+            err.response = res;
+            if(typeof callback === "function") callback(err, body, res);
         });
     });
     if(typeof options.data !== "undefined") req.write(options.data);
@@ -80,7 +94,7 @@ PlayMusic.prototype.request = function(options) {
 };
 
 
-PlayMusic.prototype.init = function(config, success, error) {
+PlayMusic.prototype.init = function(config, callback) {
     var that = this;
 
     this._email = config.email;
@@ -96,33 +110,33 @@ PlayMusic.prototype.init = function(config, success, error) {
 
     this._key = s1;
 
-    this._login(function(response) {
+    this._login(function(err, response) {
+        if(err) return callback(new Error("Login Failed: " + err));
         that._token = response.Auth;
-        that._getXt(function(xt) {
+        that._getXt(function(err, xt) {
+            if(err) return callback(new Error("Login Failed, unable to get xt (part of google auth):" + err));
             that._xt = xt;
-            that.getSettings(function(response) {
-                that._allAccess = response.settings.isSubscription;
+            that.getSettings(function(err, response) {
+                if(err) return callback(new Error("Login Failed, unable to load settings:" + err));
 
+                that._settings = response.settings;
+                that._allAccess = response.settings.isSubscription;
                 var devices = response.settings.devices.filter(function(d) {
                     return d.type === "PHONE" || d.type === "IOS";
                 });
 
                 if(devices.length > 0) {
                     that._deviceId = devices[0].id.slice(2);
-                    that.success(success, null, response);
+                    if(typeof callback === "function") callback();
                 } else {
-                    that.error(error, "Unable to find a usable device on your account, access from a mobile device and try again", body, null, res);
+                    if(typeof callback === "function") callback(new Error("Unable to find a usable device on your account, access from a mobile device and try again"));
                 }
-            }, function(message, data, err, res) {
-                that.error(error, "Login Failed, unable to get settings: " + message, data, err, res);
             });
-        }, function(message, data, err, res) {
-            that.error(error, "Login Failed, unable to get xt (part of google auth): " + message, data, err, res);
         });
     });
 };
 
-PlayMusic.prototype._login =  function (success, error) {
+PlayMusic.prototype._login =  function (callback) {
     var that = this;
     var data = {
         accountType: "HOSTED_OR_GOOGLE",
@@ -135,39 +149,30 @@ PlayMusic.prototype._login =  function (success, error) {
         method: "POST",
         url: this._accountURL + "ClientLogin",
         contentType: "application/x-www-form-urlencoded",
-        data: querystring.stringify(data), // @TODO make this.request auto serialize based on contentType
-        success: function(data, res) {
-            var obj = pmUtil.parseKeyValues(data);
-            success(obj);
-        },
-        error: function(data, err, res) {
-            that.error(error, "login failed!", data, err, res);
-        }
+        data: querystring.stringify(data)
+    },  function(err, data) {
+        callback(err, err ? null : pmUtil.parseKeyValues(data));
     });
 };
 
-PlayMusic.prototype._getXt = function (success, error) {
+PlayMusic.prototype._getXt = function(callback) {
     var that = this;
     this.request({
         method: "HEAD",
-        url: this._webURL + "listen",
-        success: function(data, res) {
-            // @TODO replace with real cookie handling
-            var cookies = {};
-            res.headers['set-cookie'].forEach(function(c) {
-                var pos = c.indexOf("=");
-                if(pos > 0) cookies[c.substr(0, pos)] = c.substr(pos+1, c.indexOf(";")-(pos+1));
-            });
+        url: this._webURL + "listen"
+    }, function(err, data, res) {
+        if(err) return callback(new Error("Get XT request failed" + err));
+        // @TODO replace with real cookie handling
+        var cookies = {};
+        res.headers['set-cookie'].forEach(function(c) {
+            var pos = c.indexOf("=");
+            if(pos > 0) cookies[c.substr(0, pos)] = c.substr(pos+1, c.indexOf(";")-(pos+1));
+        });
 
-            if (typeof cookies.xt !== "undefined") {
-                success(cookies.xt);
-            } else {
-                that.error("xt cookie missing", data, null, res);
-                return;
-            }
-        },
-        error: function(data, err, res) {
-            that.error("request for xt cookie failed", data, err, res);
+        if (typeof cookies.xt !== "undefined") {
+            callback(null, cookies.xt);
+        } else {
+            callback(new Error("xt cookie missing"));
         }
     });
 };
@@ -175,44 +180,42 @@ PlayMusic.prototype._getXt = function (success, error) {
 /**
  * Returns settings / device ids authorized for account.
  *
- * @param success function(settings) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, settings) - success callback
  */
-PlayMusic.prototype.getSettings = function(success, error) {
+PlayMusic.prototype.getSettings = function(callback) {
     var that = this;
 
     this.request({
         method: "POST",
         url: this._webURL + "services/loadsettings?" + querystring.stringify({u: 0, xt: this._xt}),
         contentType: "application/json",
-        data: JSON.stringify({"sessionId": ""}),
-        success: function(body, res) {
-            var response = JSON.parse(body);
-            that.success(success, response, res);
-        },
-        error: function(body, err, res) {
-            that.error(error, "error loading settings", body, err, res);
+        data: JSON.stringify({"sessionId": ""})
+    }, function(err, body) {
+        if(err) return callback(new Error("error loading settings: " + err), body);
+        // loadsettings returns text/plain even though it's json, so we have to manually parse it.
+        var response;
+        try {
+            response = JSON.parse(body);
+        } catch (e) {
+            callback(new Error("error parsing settings: " + e), body);
         }
+        callback(null, response);
     });
 };
 
 /**
  * Returns list of all tracks
  *
- * @param success function(trackList) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, trackList) - success callback
  */
-PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(success, error) {
+PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(callback) {
     var that = this;
     this.request({
         method: "POST",
-        url: this._baseURL + "trackfeed",
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error("error retrieving all tracks", data, err, res);
-        }
+        url: this._baseURL + "trackfeed"
+    }, function(err, body) {
+        if(err) return callback(new Error("error getting library: " + err), body);
+        callback(null, body);
     });
 };
 
@@ -220,10 +223,9 @@ PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(suc
  * Returns stream URL for a track.
  *
  * @param id string - track id, hyphenated is preferred, but "nid" will work for all access tracks (not uploaded ones)
- * @param success function(streamUrl) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, streamUrl) - success callback
  */
-PlayMusic.prototype.getStreamUrl = function (id, success, error) {
+PlayMusic.prototype.getStreamUrl = function (id, callback) {
     var that = this;
     var salt = pmUtil.salt(13);
     var sig = CryptoJS.HmacSHA1(id + salt, this._key).toString(pmUtil.Base64);
@@ -245,17 +247,12 @@ PlayMusic.prototype.getStreamUrl = function (id, success, error) {
     this.request({
         method: "GET",
         url: this._mobileURL + 'mplay?' + qstring,
-        options: { headers: { "X-Device-ID": this._deviceId } },
-        success: function(data, res) {
-            that.error(error, "successfully retrieved stream urls, but wasn't expecting that...", data, err, res);
-            console.log(data);
-        },
-        error: function(data, err, res) {
-            if(res.statusCode === 302) {
-                that.success(success, res.headers.location, res);
-            } else {
-                that.error(error, "error getting stream urls", data, err, res);
-            }
+        options: { headers: { "X-Device-ID": that._deviceId } }
+    }, function(err, data, res) {
+        if(res.statusCode === 302 && typeof res.headers.location === "string") {
+            callback(null, res.headers.location);
+        } else {
+            callback(new Error("Unable to get stream url" + err), res.headers.location);
         }
     });
 };
@@ -265,10 +262,9 @@ PlayMusic.prototype.getStreamUrl = function (id, success, error) {
  *
  * @param text string - search text
  * @param maxResults int - max number of results to return
- * @param success function(searchResults) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, searchResults) - success callback
  */
-PlayMusic.prototype.search = function (text, maxResults, success, error) {
+PlayMusic.prototype.search = function (text, maxResults, callback) {
     var that = this;
     var qp = {
         q: text,
@@ -277,33 +273,24 @@ PlayMusic.prototype.search = function (text, maxResults, success, error) {
     var qstring = querystring.stringify(qp);
     this.request({
         method: "GET",
-        url: this._baseURL + 'query?' + qstring,
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error getting search results", data, err, res);
-        }
+        url: this._baseURL + 'query?' + qstring
+    }, function(err, data) {
+        callback(err ? new Error("error getting search results: " + err) : null, data);
     });
 };
 
 /**
  * Returns list of all playlists.
  *
- * @param success function(playlists) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, playlists) - success callback
  */
-PlayMusic.prototype.getPlayLists = function (success, error) {
+PlayMusic.prototype.getPlayLists = function (callback) {
     var that = this;
     this.request({
         method: "POST",
-        url: this._baseURL + 'playlistfeed',
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error getting playlist results", data, err, res);
-        }
+        url: this._baseURL + 'playlistfeed'
+    }, function(err, body) {
+        callback(err ? new Error("error getting playlist results: " + err) : null, body);
     });
 };
 
@@ -311,10 +298,9 @@ PlayMusic.prototype.getPlayLists = function (success, error) {
 * Creates a new playlist
 *
 * @param playlistName string - the playlist name
-* @param success function(mutationStatus) - success callback
-* @param error function(data, err, res) - error callback
+* @param callback function(err, mutationStatus) - success callback
 */
-PlayMusic.prototype.addPlayList = function (playlistName, success, error) {
+PlayMusic.prototype.addPlayList = function (playlistName, callback) {
     var that = this;
     var mutations = [
     {
@@ -331,13 +317,9 @@ PlayMusic.prototype.addPlayList = function (playlistName, success, error) {
         method: "POST",
         contentType: "application/json",
         url: this._baseURL + 'playlistbatch?' + querystring.stringify({alt: "json"}),
-        data: JSON.stringify({"mutations": mutations}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error adding a playlist", data, err, res);
-        }
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error creating playlist " + err) : null, body);
     });
 };
 
@@ -346,10 +328,9 @@ PlayMusic.prototype.addPlayList = function (playlistName, success, error) {
 *
 * @param songId int - the song id
 * @param playlistId int - the playlist id
-* @param success function(mutationStatus) - success callback
-* @param error function(data, err, res) - error callback
+* @param callback function(err, mutationStatus) - success callback
 */
-PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, error) {
+PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, callback) {
     var that = this;
     var mutations = [
         {
@@ -359,7 +340,7 @@ PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, 
                 "deleted": "false",
                 "lastModifiedTimestamp": "0",
                 "playlistId": playlistId,
-                "source": (songId.indexOf("T") == 0 ? "2" : "1"),
+                "source": (songId.indexOf("T") === 0 ? "2" : "1"),
                 "trackId": songId
             }
         }
@@ -368,13 +349,9 @@ PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, 
         method: "POST",
         contentType: "application/json",
         url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
-        data: JSON.stringify({"mutations": mutations}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error adding a track into a playlist", data, err, res);
-        }
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error adding a track to playlist: " + err) : null, body);
     });
 };
 
@@ -382,17 +359,16 @@ PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, success, 
 * Increments track's playcount
 *
 * @param songId int - the song id. See http://bit.ly/1L4U6oK for id requirements.
-* @param success function(mutationStatus) - success callback
-* @param error function(data, err, res) - error callback
+* @param callback function(err, mutationStatus) - success callback
 */
-PlayMusic.prototype.incrementTrackPlaycount = function (songId, success, error) {
+PlayMusic.prototype.incrementTrackPlaycount = function (songId, callback) {
     var that = this;
     var stats = [
         {
             "id": songId,
             "incremental_plays": "1",
             "last_play_time_millis": Date.now().toString(),
-            "type": (songId.indexOf("T") == 0 ? "2" : "1"),
+            "type": (songId.indexOf("T") === 0 ? "2" : "1"),
             "track_events": []
         }
     ];
@@ -400,13 +376,9 @@ PlayMusic.prototype.incrementTrackPlaycount = function (songId, success, error) 
         method: "POST",
         contentType: "application/json",
         url: this._baseURL + 'trackstats?' + querystring.stringify({alt: "json"}),
-        data: JSON.stringify({"track_stats": stats}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error incrementing track's playcount", data, err, res);
-        }
+        data: JSON.stringify({"track_stats": stats})
+    }, function(err, body) {
+        callback(err ? new Error("error incrementing track playcount: " + err) : null, body);
     });
 };
 
@@ -414,10 +386,9 @@ PlayMusic.prototype.incrementTrackPlaycount = function (songId, success, error) 
 * Removes given entry id from playlist entries
 *
 * @param entryId int - the entry id. You can get this from getPlayListEntries
-* @param success function(mutationStatus) - success callback
-* @param error function(data, err, res) - error callback
+* @param callback function(err, mutationStatus) - success callback
 */
-PlayMusic.prototype.removePlayListEntry = function (entryId, success, error) {
+PlayMusic.prototype.removePlayListEntry = function (entryId, callback) {
     var that = this;
     var mutations = [ { "delete": entryId } ];
 
@@ -425,33 +396,24 @@ PlayMusic.prototype.removePlayListEntry = function (entryId, success, error) {
         method: "POST",
         contentType: "application/json",
         url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
-        data: JSON.stringify({"mutations": mutations}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error removing a playlist entry", data, err, res);
-        }
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error removing playlist entry: " + err) : null, body);
     });
 };
 
 /**
  * Returns tracks on all playlists.
  *
- * @param success function(playlistEntries) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, playlistEntries) - success callback
  */
-PlayMusic.prototype.getPlayListEntries = function (success, error) {
+PlayMusic.prototype.getPlayListEntries = function (callback) {
     var that = this;
     this.request({
         method: "POST",
-        url: this._baseURL + 'plentryfeed',
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error(error, "error getting playlist results", data, err, res);
-        }
+        url: this._baseURL + 'plentryfeed'
+    }, function(err, body) {
+        callback(err ? new Error("error getting playlist results: " + err) : null, body);
     });
 };
 
@@ -460,21 +422,15 @@ PlayMusic.prototype.getPlayListEntries = function (success, error) {
  *
  * @param albumId string All Access album "nid" -- WILL NOT ACCEPT album "id" (requires "T" id, not hyphenated id)
  * @param includeTracks boolean -- include track list
- * @param success function(albumList) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, albumList) - success callback
  */
-PlayMusic.prototype.getAlbum = function (albumId, includeTracks, success, error) {
+PlayMusic.prototype.getAlbum = function (albumId, includeTracks, callback) {
     var that = this;
     this.request({
         method: "GET",
-        url: this._baseURL + "fetchalbum?" + querystring.stringify({nid: albumId, "include-tracks": includeTracks, alt: "json"}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-
-        },
-        error: function(data, err, res) {
-            that.error(error, "error getting album tracks", data, err, res);
-        }
+        url: this._baseURL + "fetchalbum?" + querystring.stringify({nid: albumId, "include-tracks": includeTracks, alt: "json"})
+    }, function(err, body) {
+        callback(err ? new Error("error getting album tracks: " + err) : null, body);
     });
 };
 
@@ -482,21 +438,15 @@ PlayMusic.prototype.getAlbum = function (albumId, includeTracks, success, error)
  * Returns info about an All Access track.  Does not work for uploaded songs.
  *
  * @param trackId string All Access track "nid" -- WILL NOT ACCEPT track "id" (requires "T" id, not hyphenated id)
- * @param success function(trackInfo) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, trackInfo) - success callback
  */
-PlayMusic.prototype.getAllAccessTrack = function (trackId, success, error) {
+PlayMusic.prototype.getAllAccessTrack = function (trackId, callback) {
     var that = this;
     this.request({
         method: "GET",
-        url: this._baseURL + "fetchtrack?" + querystring.stringify({nid: trackId, alt: "json"}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-
-        },
-        error: function(data, err, res) {
-            that.error(error, "error getting album tracks", data, err, res);
-        }
+        url: this._baseURL + "fetchtrack?" + querystring.stringify({nid: trackId, alt: "json"})
+    }, function(err, body) {
+        callback(err ? new Error("error getting all access track: " + err) : null, body);
     });
 };
 
@@ -507,33 +457,22 @@ PlayMusic.prototype.getAllAccessTrack = function (trackId, success, error) {
  * @param includeAlbums boolean - should album list be included in result
  * @param topTrackCount int - number of top tracks to return
  * @param relatedArtistCount int - number of related artists to return
- * @param success function(artistInfo) - success callback
- * @param error function(data, err, res) - error callback
+ * @param callback function(err, artistInfo) - success callback
  */
-PlayMusic.prototype.getArtist = function (artistId, includeAlbums, topTrackCount, relatedArtistCount, success, error) {
+PlayMusic.prototype.getArtist = function (artistId, includeAlbums, topTrackCount, relatedArtistCount, callback) {
     var that = this;
     this.request({
         method: "GET",
-        url: this._baseURL + "fetchartist?" + querystring.stringify({nid: artistId, "include-albums": includeAlbums, "num-top-tracks": topTrackCount, "num-related-artists": relatedArtistCount, alt: "json"}),
-        success: function(data, res) {
-            that.success(success, JSON.parse(data), res);
-        },
-        error: function(data, err, res) {
-            that.error("error getting album tracks", data, err, res);
-        }
+        url: this._baseURL + "fetchartist?" + querystring.stringify({
+            nid: artistId,
+            "include-albums": includeAlbums,
+            "num-top-tracks": topTrackCount,
+            "num-related-artists": relatedArtistCount,
+            alt: "json"
+        })
+    }, function(err, body) {
+        callback(err ? new Error("error getting artist info: " + err) : null, body);
     });
 };
 
-PlayMusic.prototype.success = function (success, data) {
-    success = typeof success === "function" ? success : function(data) {
-        console.log(util.inspect(data, {depth: null, colors: true}));
-    };
-    success(data);
-};
-PlayMusic.prototype.error = function (error, data, err, res) {
-    error = typeof error === "function" ? error : function() {
-        console.error(error, util.inspect(err, {depth: 2, colors: true}));
-    };
-    error(data, err, res);
-};
 module.exports = exports = PlayMusic;

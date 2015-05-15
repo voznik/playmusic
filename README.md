@@ -14,17 +14,18 @@ Initialization
 ```
 var PlayMusic = require('playmusic');
 var pm = new PlayMusic();
-pm.init({email: "email@address.com", password: "password"}, function() {
-  // place code here
+pm.init({email: "email@address.com", password: "password"}, function(err) {
+    if(err) console.error(err);
+    // place code here
 })
 ```
 
 Retrieve list of all tracks in your library (uploaded tracks _and_ tracks added to library from All Access)
 ```
-    pm.getAllTracks(function(library) {
+    pm.getAllTracks(function(err, library) {
         var song = library.data.items.pop();
         console.log(song);
-        pm.getStreamUrl(song.id, function(streamUrl) {
+        pm.getStreamUrl(song.id, function(err, streamUrl) {
             console.log(streamUrl);
         });
     });
@@ -32,12 +33,12 @@ Retrieve list of all tracks in your library (uploaded tracks _and_ tracks added 
 
 Search for a song
 ```
-    pm.search("bastille lost fire", 5, function(data) { // max 5 results
+    pm.search("bastille lost fire", 5, function(err, data) { // max 5 results
         var song = data.entries.sort(function(a, b) { // sort by match score
             return a.score < b.score;
         }).shift(); // take first song
         console.log(song);
-        pm.getStreamUrl(song.track.nid, function(streamUrl) {
+        pm.getStreamUrl(song.track.nid, function(err, streamUrl) {
             console.log(streamUrl);
         });
     }, function(message, body, err, httpResponse) {
@@ -48,12 +49,12 @@ Search for a song
 Retrieve Playlists
 ```
     // gets all playlists
-    pm.getPlayLists(function(data) {
+    pm.getPlayLists(function(err, data) {
         console.log(data.data.items);
     });
 
     // gets all playlists, and all entries on each
-    pm.getPlayListEntries(function(data) {
+    pm.getPlayListEntries(function(err, data) {
         console.log(data.data.items);
     });
 ```
@@ -70,7 +71,7 @@ Retrieve the Stream URL for a song by track.id (uploaded songs only!!!)
 
 Retrieve information about an album or artist (All Access Only!!!)
 ```
-    // getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, success, error]
+    // getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, callback]
     pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2);
 
     // getAlbum - albumId, includeTracks[, success, error]
@@ -83,7 +84,7 @@ Get Google Play Music Settings
     pm.getSettings();
 ```
 
-Console Mode!
+More Examples:
 ===
 
 ```
@@ -92,20 +93,19 @@ node
 
 var pm = new (require('playmusic'));
 pm.init({email: "email", password: "password"}, function() {});
-
-// wait for a second or two to make sure you're logged in.
+// var pm = new (require('./'))();  pm.init(JSON.parse(require('fs').readFileSync("./examples/config.json")));
 
 pm.getPlayLists();
 pm.getPlayListEntries();
 
-// getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, success, error]
-pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2);
+// getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, callback]
+pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2, console.log);
 
 // getStreamUrl for All Access - sj#track -> storeId
-pm.getStreamUrl('Tsbbwp6r2wpwxb55noc6b26kwq4');
+pm.getStreamUrl('Tsbbwp6r2wpwxb55noc6b26kwq4', console.log);
 
 // getStreamUrl for uploaded - sj#track -> id
-pm.getStreamUrl('84df1e4e-6b76-3147-9a78-a44becc28dc5');
+pm.getStreamUrl('84df1e4e-6b76-3147-9a78-a44becc28dc5', console.log);
 
 
 // Find all uploaded tracks (tracks returned by getAllTracks without a storeId), get a streamUrl for one of them
@@ -113,16 +113,15 @@ var allTracks;
 pm.getAllTracks(function(data) { allTracks = data.data.items; });
 var searchResults = allTracks.filter(function(track) { return typeof track.storeId === "undefined"; });
 console.log(searchResults[0]);
-pm.getStreamUrl(searchResults[0].id);
+pm.getStreamUrl(searchResults[0].id, console.log);
 ```
 
 Future
 ----
 * create stations / get songs from stations/genres
 * provide better examples
-* add automated integration testing so semaphore build results are useful
+* add automated integration testing
 * improve authentication
-* externalize cookie handling
 * explore providing a higher level api that allows easy following of relationships between objects
 * Suggestions?  submit an issue!
 
