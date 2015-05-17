@@ -53,9 +53,9 @@ pm.init(config, function() {
     pm.createStation("test123123123", "Tslarazlflb7nou3ljjtyxutbji", "track", function(err, data) {
         if(err) console.error(util.inspect(err, {color: true, depth: 10}));
         console.log(util.inspect(data, {color: true, depth: 10}));
-        pm.getStationTracks("IFL", function(err, data) {
-            if(err) console.error(util.inspect(err, {color: true, depth: 10}));
-            console.log(util.inspect(data, {color: true, depth: 10}));
-        });
+        //        pm.getStationTracks("95d01d83-05b6-3053-a83e-7f7280f529bc", 10, function(err, data) {
+        //            if(err) console.error(util.inspect(err, {color: true, depth: 10}));
+        //            console.log(util.inspect(data, {color: true, depth: 10}));
+        //        });
     });
 });

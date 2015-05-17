@@ -536,13 +536,13 @@ PlayMusic.prototype.createStation = function(name, seedId, type, callback) {
     });
 };
 
-PlayMusic.prototype.getStationTracks = function(stationId, callback) {
+PlayMusic.prototype.getStationTracks = function(stationId, tracks, callback) {
     var that = this;
     var obj = {
         "contentFilter": 1,
         "stations": [{
             "radioId": stationId,
-            "numEntries": 25,
+            "numEntries": tracks,
             "recentlyPlayed": []
         }]
     };
