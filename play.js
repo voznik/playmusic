@@ -41,7 +41,7 @@ pmUtil.salt = function(len) {
 
 var PlayMusic = function() {};
 
-PlayMusic.prototype._baseURL = 'https://www.googleapis.com/sj/v1.5/';
+PlayMusic.prototype._baseURL = 'https://www.googleapis.com/sj/v1.11/';
 PlayMusic.prototype._webURL = 'https://play.google.com/music/';
 PlayMusic.prototype._mobileURL = 'https://android.clients.google.com/music/';
 PlayMusic.prototype._accountURL = 'https://www.google.com/accounts/';
@@ -472,6 +472,88 @@ PlayMusic.prototype.getArtist = function (artistId, includeAlbums, topTrackCount
         })
     }, function(err, body) {
         callback(err ? new Error("error getting artist info: " + err) : null, body);
+    });
+};
+
+PlayMusic.prototype.getSeed = function(seedId, type) {
+    var seed;
+    if(type === "track" && seedId.charAt(0) === "T") {
+        seed = {trackId: seedId, seedType: 2};
+    } else if(type === "track") {
+        seed = {trackId: seedId, seedType: 1};
+    } else if(type === "artist") {
+        seed = {artistId: seedId, seedType: 3};
+    } else if(type === "album") {
+        seed = {albumId: seedId, seedType: 4};
+    } else if(type === "genre") {
+        seed = {genreId: seedId, seedType: 5};
+    }
+    return seed;
+};
+PlayMusic.prototype.getStations = function(callback) {
+    var that = this;
+
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'radio/station'
+        //data: JSON.stringify(obj)
+    }, function(err, body) {
+        callback(err ? new Error("error listing stations: " + err) : null, body);
+    });
+
+ 
+};
+PlayMusic.prototype.createStation = function(name, seedId, type, callback) {
+    var that = this;
+    var seed = this.getSeed(seedId, type);
+    if(!seed) return callback(new Error("Invalid Seed type"));
+    var mutations = [
+        {
+            "createOrGet": {
+                "clientId": uuid.v1(),
+                "deleted": false,
+                "imageType": 1,
+                "lastModifiedTimestamp": "-1", // + (new Date()).valueOf()*1000,
+                "name": name,
+                "recentTimeStamp": "" + (new Date()).valueOf()*1000,
+                "seed": seed,
+                "tracks": []
+            },
+            "includeFeed": false,
+            "numEntries": 0,
+            "params": { "contentFilter": 1 }
+        }
+    ];
+
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'radio/editstation?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error creating station: " + err) : null, body);
+    });
+};
+
+PlayMusic.prototype.getStationTracks = function(stationId, callback) {
+    var that = this;
+    var obj = {
+        "contentFilter": 1,
+        "stations": [{
+            "radioId": stationId,
+            "numEntries": 25,
+            "recentlyPlayed": []
+        }]
+    };
+
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'radio/stationfeed?' + querystring.stringify({alt: "json", "include-tracks": "true"}),
+        data: JSON.stringify(obj)
+    }, function(err, body) {
+        callback(err ? new Error("error getting station tracks: " + err) : null, body);
     });
 };
 
