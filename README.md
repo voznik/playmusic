@@ -20,6 +20,28 @@ pm.init({email: "email@address.com", password: "password"}, function(err) {
 })
 ```
 
+You may also call init with a master token either extracted from an existing android device or created by calling pm.login.
+
+```
+var PlayMusic = require('playmusic');
+var pm = new PlayMusic();
+pm.init({androidId: "16 DIGIT HEX", masterToken: "oauth2rt_1/..."}, function(err) {
+    if(err) console.error(err);
+    // place code here
+})
+```
+
+To create a master token, call pm.login.  if you do not provide an androidId, one will be generated.  The callback function will be given an object containing "masterToken" and "androidId".  This object can be saved and passed to init on future calls.
+
+```
+var PlayMusic = require('playmusic');
+var pm = new PlayMusic();
+pm.login({email: "email@address.com", password: "password", androidId: "16 DIGIT HEX"}, function(err) {
+    if(err) console.error(err);
+    // place code here
+})
+```
+
 Retrieve list of all tracks in your library (uploaded tracks _and_ tracks added to library from All Access)
 ```
     pm.getAllTracks(function(err, library) {

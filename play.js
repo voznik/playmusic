@@ -15,6 +15,8 @@ var url = require('url');
 var CryptoJS = require("crypto-js");
 var uuid = require('node-uuid');
 var util = require('util');
+var crypto = require('crypto');
+//var async = require('async');
 
 var pmUtil = {};
 pmUtil.parseKeyValues = function(body) {
@@ -45,6 +47,7 @@ PlayMusic.prototype._baseURL = 'https://www.googleapis.com/sj/v1.11/';
 PlayMusic.prototype._webURL = 'https://play.google.com/music/';
 PlayMusic.prototype._mobileURL = 'https://android.clients.google.com/music/';
 PlayMusic.prototype._accountURL = 'https://www.google.com/accounts/';
+PlayMusic.prototype._authURL = 'https://android.clients.google.com/auth';
 
 PlayMusic.prototype.request = function(options, callback) {
     var opt = url.parse(options.url);
@@ -99,6 +102,7 @@ PlayMusic.prototype.init = function(config, callback) {
 
     this._email = config.email;
     this._password = config.password;
+    this._masterToken = config.masterToken;
 
     // load signing key
     var s1 = CryptoJS.enc.Base64.parse('VzeC4H4h+T2f0VI180nVX8x+Mb5HiTtGnKgH52Otj8ZCGDz9jRWyHb6QXK0JskSiOgzQfwTY5xgLLSdUSreaLVMsVVWfxfa8Rw==');
@@ -110,72 +114,96 @@ PlayMusic.prototype.init = function(config, callback) {
 
     this._key = s1;
 
-    this._login(function(err, response) {
-        if(err) return callback(new Error("Login Failed: " + err));
-        that._token = response.Auth;
-        that._getXt(function(err, xt) {
-            if(err) return callback(new Error("Login Failed, unable to get xt (part of google auth):" + err));
-            that._xt = xt;
-            that.getSettings(function(err, response) {
-                if(err) return callback(new Error("Login Failed, unable to load settings:" + err));
+    this._oauth(function(err, data) {
+        if(err) return callback(new Error("Unable to create oauth token" + err));
+        that._token = data.Auth;
+        that.getSettings(function(err, response) {
+            if(err) return callback(new Error("Login Failed, unable to load settings:" + err));
 
-                that._settings = response.settings;
-                that._allAccess = response.settings.isSubscription;
-                var devices = response.settings.devices.filter(function(d) {
-                    return d.type === "PHONE" || d.type === "IOS";
-                });
-
-                if(devices.length > 0) {
-                    that._deviceId = devices[0].id.slice(2);
-                    if(typeof callback === "function") callback();
-                } else {
-                    if(typeof callback === "function") callback(new Error("Unable to find a usable device on your account, access from a mobile device and try again"));
-                }
+            that._settings = response.settings;
+            that._allAccess = response.settings.isSubscription;
+            var devices = response.settings.devices.filter(function(d) {
+                return d.type === "PHONE" || d.type === "IOS";
             });
+
+            if(devices.length > 0) {
+                that._deviceId = devices[0].id.slice(2);
+                if(typeof callback === "function") callback();
+            } else {
+                if(typeof callback === "function") callback(new Error("Unable to find a usable device on your account, access from a mobile device and try again"));
+            }
         });
+
     });
 };
 
-PlayMusic.prototype._login =  function (callback) {
+PlayMusic.prototype._oauth =  function (callback) {
     var that = this;
     var data = {
         accountType: "HOSTED_OR_GOOGLE",
-        Email: that._email.trim(),
-        Passwd: that._password.trim(),
+        has_permission: 1,
         service: "sj",
-        source: "node-gmusic"
+        source: "android",
+        androidId: that._androidId,
+        app: "com.google.android.music",
+        device_country: "us",
+        operatorCountry: "us",
+        //client_sig: "61ed377e85d386a8dfee6b864bd85b0bfaa5af81",
+        lang: "en",
+        sdk_version: "17"
     };
+    if(this._masterToken) {
+        data.Token = this._masterToken;
+    } else if(this._password) {
+        data.Passwd = this._password;
+        data.Email = that._email.trim();
+
+    } else {
+        callback(new Error("You must provide either an email address and password, or a token"));
+    }
+
     this.request({
         method: "POST",
-        url: this._accountURL + "ClientLogin",
+        url: that._authURL,
         contentType: "application/x-www-form-urlencoded",
-        data: querystring.stringify(data)
+        data: querystring.stringify(data),
+        headers: {
+            //Authorization: "GoogleLogin auth=" + that._master_token
+        }
     },  function(err, data) {
+        console.error(err);
+        //console.log(data);
         callback(err, err ? null : pmUtil.parseKeyValues(data));
     });
 };
-
-PlayMusic.prototype._getXt = function(callback) {
+PlayMusic.prototype.login =  function (opt, callback) {
     var that = this;
+    opt.androidId = opt.androidId || crypto.pseudoRandomBytes(8).toString("hex");
+    var data = {
+        accountType: "HOSTED_OR_GOOGLE",
+        Email: opt.email.trim(),
+        has_permission: "1",
+        add_account: "1",
+        Passwd: opt.password.trim(),
+        service: "ac2dm",
+        source: "android",
+        androidId: opt.androidId,
+        device_country: "us",
+        operatorCountry: "us",
+        lang: "en",
+        sdk_version: "17"
+    };
     this.request({
-        method: "HEAD",
-        url: this._webURL + "listen"
-    }, function(err, data, res) {
-        if(err) return callback(new Error("Get XT request failed" + err));
-        // @TODO replace with real cookie handling
-        var cookies = {};
-        res.headers['set-cookie'].forEach(function(c) {
-            var pos = c.indexOf("=");
-            if(pos > 0) cookies[c.substr(0, pos)] = c.substr(pos+1, c.indexOf(";")-(pos+1));
-        });
-
-        if (typeof cookies.xt !== "undefined") {
-            callback(null, cookies.xt);
-        } else {
-            callback(new Error("xt cookie missing"));
-        }
+        method: "POST",
+        url: this._authURL,
+        contentType: "application/x-www-form-urlencoded",
+        data: querystring.stringify(data)
+    },  function(err, data) {
+        var response = pmUtil.parseKeyValues(data);
+        callback(err, err ? null : {androidId: opt.androidId, masterToken: response.Token});
     });
 };
+
 
 /**
  * Returns settings / device ids authorized for account.
@@ -187,7 +215,7 @@ PlayMusic.prototype.getSettings = function(callback) {
 
     this.request({
         method: "POST",
-        url: this._webURL + "services/loadsettings?" + querystring.stringify({u: 0, xt: this._xt}),
+        url: this._webURL + "services/loadsettings?" + querystring.stringify({u: 0}),
         contentType: "application/json",
         data: JSON.stringify({"sessionId": ""})
     }, function(err, body) {
@@ -475,7 +503,14 @@ PlayMusic.prototype.getArtist = function (artistId, includeAlbums, topTrackCount
     });
 };
 
-PlayMusic.prototype.getSeed = function(seedId, type) {
+/**
+ * Builds a seed object for use with createStation
+ *
+ * @param seedId string - a track, artist, album, or genre id
+ * @param type string - one of ["track", "artist", "album", "genre"]
+ * @return object - seed object for use with createStation
+ */
+PlayMusic.prototype._getSeed = function(seedId, type) {
     var seed;
     if(type === "track" && seedId.charAt(0) === "T") {
         seed = {trackId: seedId, seedType: 2};
@@ -490,6 +525,12 @@ PlayMusic.prototype.getSeed = function(seedId, type) {
     }
     return seed;
 };
+
+/**
+ * Returns list of existing stations
+ *
+ * @param callback function(err, stationInfo) - success callback
+ */
 PlayMusic.prototype.getStations = function(callback) {
     var that = this;
 
@@ -501,12 +542,20 @@ PlayMusic.prototype.getStations = function(callback) {
     }, function(err, body) {
         callback(err ? new Error("error listing stations: " + err) : null, body);
     });
-
- 
 };
+
+
+/**
+ * Creates a new station
+ *
+ * @param name string - name of new station
+ * @param seedId string - a track, artist, album, or genre id
+ * @param type string - one of ["track", "artist", "album", "genre"]
+ * @param callback function(err, mutationStatus) - success callback
+ */
 PlayMusic.prototype.createStation = function(name, seedId, type, callback) {
     var that = this;
-    var seed = this.getSeed(seedId, type);
+    var seed = this._getSeed(seedId, type);
     if(!seed) return callback(new Error("Invalid Seed type"));
     var mutations = [
         {
@@ -536,6 +585,13 @@ PlayMusic.prototype.createStation = function(name, seedId, type, callback) {
     });
 };
 
+/**
+ * Gets a list of tracks for a given station id
+ *
+ * @param stationId string - id of station
+ * @param tracks int - number of tracks to return
+ * @param callback function(err, stationInfo) - success callback
+ */
 PlayMusic.prototype.getStationTracks = function(stationId, tracks, callback) {
     var that = this;
     var obj = {
