@@ -171,8 +171,6 @@ PlayMusic.prototype._oauth =  function (callback) {
             //Authorization: "GoogleLogin auth=" + that._master_token
         }
     },  function(err, data) {
-        console.error(err);
-        //console.log(data);
         callback(err, err ? null : pmUtil.parseKeyValues(data));
     });
 };
