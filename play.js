@@ -629,4 +629,22 @@ PlayMusic.prototype.getStationTracks = function(stationId, tracks, callback) {
     });
 };
 
+PlayMusic.prototype.getFavotites = function(callback) {
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._webURL + 'services/getephemthumbsup'
+    }, function(err, body) {
+        if (err) {
+            return callback(err);
+        }
+        try {
+            body = JSON.parse(body);
+        } catch (err) {
+            return callback(err);
+        };
+        callback(null, body);
+    });
+};
+
 module.exports = exports = PlayMusic;
