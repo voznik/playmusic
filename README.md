@@ -1,7 +1,11 @@
 Node-JS Google Play Music API
 ====
-
 Written by Jamon Terrell <git@jamonterrell.com>
+
+---
+NOTE:  As of version 2.0, all callbacks are node.js style, with the first param being an "error" if one exists.  If you are upgrading from 1.x you'll need to make sure to update your callbacks as represented in the documentation
+---
+
 
 This project is not endorsed by of affiliated with Google in any way.
 
