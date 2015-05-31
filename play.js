@@ -16,7 +16,9 @@ var CryptoJS = require("crypto-js");
 var uuid = require('node-uuid');
 var util = require('util');
 var crypto = require('crypto');
-//var async = require('async');
+var ffmetadata = require('ffmetadata');
+var fs = require('fs');
+var async = require('async');
 
 var pmUtil = {};
 pmUtil.parseKeyValues = function(body) {
@@ -176,15 +178,50 @@ PlayMusic.prototype._oauth =  function (callback) {
         callback(err, err ? null : pmUtil.parseKeyValues(data));
     });
 };
+PlayMusic.prototype.encryptForGoogle = function(email, password) {
+    var forge = require('node-forge');
+    var googleKey = "AAAAgMom/1a/v0lblO2Ubrt60J2gcuXSljGFQXgcyZWveWLEwo6prwgi3iJIZdodyhKZQrNWp5nKJ3srRXcUW+F1BD3baEVGcmEgqaLZUNBjm057pKRI16kB0YppeGx5qIQ5QjKzsR8ETQbKLNWgRY0QRNVz34kMJR3P/LgHax/6rmf5AAAAAwEAAQ==";
+    var keyBuf = new Buffer(googleKey, 'base64');
+    var modLen = keyBuf.readUInt32BE(0);
+    var expLen = keyBuf.readUInt32BE(modLen+4);
+    var modulus = new forge.jsbn.BigInteger(keyBuf.toString('hex', 4, modLen+4), 16);
+    console.log(modulus.toString());
+    var exponent = new forge.jsbn.BigInteger(keyBuf.toString('hex', modLen+8, modLen+expLen+8), 16);
+    var publicKey = forge.pki.rsa.setPublicKey(modulus, exponent);
+    var bytes = new Buffer([email, password].join("\x00"), "utf8");
+    var encrypted = publicKey.encrypt(bytes, 'RSA-OAEP', {
+      md: forge.md.sha1.create(),
+      mgf1: {
+        md: forge.md.sha1.create()
+      }
+    });
+    var enc = new Buffer(encrypted, 'binary');
+    // console.log(forge.util.encode64(encrypted));
+    // console.log(enc.toString('base64'));
+    var md = forge.md.sha1.create();
+    md.update(keyBuf);
+    var keysha = new Buffer(md.digest().data, 'binary');
+    var ret = new Buffer(5 + enc.length);
+    ret[0] = 0;
+    keysha.copy(ret, 1, 0, 4);
+    enc.copy(ret, 5, 0, enc.length);
+    console.log("keysha", keysha.toString('hex'));
+    console.log("ret", ret.toString('hex'));
+    return ret.toString('base64');
+};
 PlayMusic.prototype.login =  function (opt, callback) {
     var that = this;
     opt.androidId = opt.androidId || crypto.pseudoRandomBytes(8).toString("hex");
+    var password = opt.password.trim();
+    // var encryptedPasswd = this.encryptForGoogle(opt.email.trim(), opt.password.trim()); //"Y7JFe119V+3Uz2dat57445PYUTPv7lmMxRfzsxwBiDnbFoGdVzG2fmtBKhrSJ8hRwKoC9r3LHcIVM2GfQi4mSTxwloyPJis6LPY0Y7DZphWF/8w0yMLw2GfR+HdUoOS5mAQWK4mpLgraYqy89esPKgqrAehz3B7ucOKtjU10fXJP";
+    // console.log("encrypted", encryptedPasswd);
     var data = {
         accountType: "HOSTED_OR_GOOGLE",
         Email: opt.email.trim(),
         has_permission: "1",
         add_account: "1",
-        Passwd: opt.password.trim(),
+        // EncryptedPasswd: encryptedPasswd,
+        Passwd: password,
         service: "ac2dm",
         source: "android",
         androidId: opt.androidId,
@@ -193,14 +230,17 @@ PlayMusic.prototype.login =  function (opt, callback) {
         lang: "en",
         sdk_version: "17"
     };
+    var encodedData = querystring.stringify(data);
+    console.log(encodedData);
     this.request({
         method: "POST",
         url: this._authURL,
         contentType: "application/x-www-form-urlencoded",
-        data: querystring.stringify(data)
+        data: encodedData
     },  function(err, data) {
-        var response = pmUtil.parseKeyValues(data);
-        callback(err, err ? null : {androidId: opt.androidId, masterToken: response.Token});
+        if(err) return console.log(err.toString());
+        //var response = pmUtil.parseKeyValues(data);
+        //callback(err, err ? null : {androidId: opt.androidId, masterToken: response.Token});
     });
 };
 
@@ -613,4 +653,67 @@ PlayMusic.prototype.getStationTracks = function(stationId, tracks, callback) {
     });
 };
 
+PlayMusic.prototype.getStream = function(streamUrl, callback) {
+    var opt = url.parse(streamUrl);
+    var req = https.request(opt, function(res) {
+        if(res.statusCode !== 200) return callback(new Error("Unable to get stream"));
+        res.on('error', function(error) {
+            callback(new Error("Error processing stream"));
+        });
+        callback(null, res);
+    });
+    req.end();
+};
+
+PlayMusic.prototype.streamToFile = function(trackId, fileName, callback) {
+    var that = this;
+    async.waterfall([
+        function(cb) {
+            that.getStreamUrl(trackId, cb);
+        },
+        function(streamUrl, cb) {
+            that.getStream(streamUrl, cb);
+        },
+        function(stream, cb) {
+            var writeStream = fs.createWriteStream(fileName);
+            stream.pipe(writeStream);
+            writeStream.on("error", function(err) {
+                cb(new Error("Error writing to file: " + fileName));
+            });
+            writeStream.on("finish", function() {
+                cb();
+            });
+        }
+    ], callback);
+};
+
+PlayMusic.prototype.download = function(trackId, fileName, callback) {
+    var that = this;
+    async.parallel([
+        function(pcb) {
+            that.getAllAccessTrack(trackId, pcb);
+        },
+        function(pcb) {
+            that.streamToFile(trackId, fileName, pcb);
+        }
+    ], function(err, result) {
+        if(err) return callback(err);
+        that.updateId3(result[0], fileName, callback);
+    });
+};
+PlayMusic.prototype.updateId3 = function(track, fileName, callback) {
+    var tags = {
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        track: track.trackNumber,
+        composer: track.composer,
+        disc: track.discNumber,
+        date: track.year
+    };
+    ffmetadata.write(fileName, tags, {"id3v2.3": true}, function(err, data) {
+        if(err) return callback(new Error("Error writing id3 tags, do you have ffmpeg installed and in the path?" + err));
+        callback(err, track);
+    });
+};
 module.exports = exports = PlayMusic;
