@@ -234,11 +234,29 @@ PlayMusic.prototype.getSettings = function(callback) {
  *
  * @param callback function(err, trackList) - success callback
  */
-PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(callback) {
+PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(opts, callback) {
     var that = this;
+
+    // If first parameter is a callback, shift it over to the second param
+    if (typeof opts === "function") {
+        callback = opts;
+        opts = {};
+    }
+    // Set options defaults
+    opts.limit = opts.limit || 1000;
+
+    // Request body data
+    var data = { "max-results": opts.limit };
+    // Add 'start-token' if a continuation token was provided
+    if (!!opts.nextPageToken) {
+        data["start-token"] = opts.nextPageToken;
+    }
+
     this.request({
         method: "POST",
-        url: this._baseURL + "trackfeed"
+        url: this._baseURL + "trackfeed",
+        contentType: "application/json",
+        data: JSON.stringify(data)
     }, function(err, body) {
         if(err) return callback(new Error("error getting library: " + err), body);
         callback(null, body);
