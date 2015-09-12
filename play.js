@@ -121,9 +121,9 @@ PlayMusic.prototype.init = function(config, callback) {
             if(err) return callback(new Error("Login Failed, unable to load settings:" + err));
 
             that._settings = response.settings;
-            that._allAccess = response.settings.isSubscription;
-            var devices = response.settings.devices.filter(function(d) {
-                return d.type === "PHONE" || d.type === "IOS";
+            that._allAccess = response.settings.entitlementInfo.isSubscription;
+            var devices = response.settings.uploadDevice.filter(function(d) {
+                return d.deviceType === 2;
             });
 
             if(devices.length > 0) {
@@ -213,7 +213,7 @@ PlayMusic.prototype.getSettings = function(callback) {
 
     this.request({
         method: "POST",
-        url: this._webURL + "services/loadsettings?" + querystring.stringify({u: 0}),
+        url: this._webURL + "services/fetchsettings?" + querystring.stringify({u: 0}),
         contentType: "application/json",
         data: JSON.stringify({"sessionId": ""})
     }, function(err, body) {
