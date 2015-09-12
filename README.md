@@ -168,4 +168,4 @@ Special thanks go out to the following individuals and projects:
 * [wyozi](https://github.com/wyozi) - playlist management support
 * [Jonathan Cremin](https://github.com/kudos) and [match-audio](https://match.audio/) - contributions including support for new api changes and documentation for authorization, bug fixes for error handling
 * [Jan Smolders](https://github.com/jansmolders86) and [MediacenterJS](http://mediacenterjs.com/) - testing, troubleshooting and other feedback
-* [Puneeth Uttla](https://github.com/kiwiluver75) - authentication workaround
+* [Puneeth Uttla](https://github.com/kiwiluver75) - authentication workaround, api change fixes (Thanks a bunch!)
