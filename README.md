@@ -8,10 +8,14 @@ NOTE:  As of version 2.0, all callbacks are node.js style, with the first param 
 
 ---
 
-
 This project is not endorsed by of affiliated with Google in any way.
 
+Authentication
+----
+
 The library requires Google credentials, but does not require an All Access subscription on that account. It also requires a mobile device registered against that account. Ensure you have signed into the app on a phone and that you have played any amount of music. This will authorise the device that the library will masquerade as.
+
+The Google account also needs to have the "Allow less secure apps" setting set to "ON". You can change it [here](https://myaccount.google.com/security#connectedapps).
 
 How to Use
 ----
