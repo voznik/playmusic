@@ -91,6 +91,13 @@ Retrieve Playlists
     });
 ```
 
+Get favorite songs
+```
+	pm.getFavotites(function(err, data) {
+		console.log(data.track);
+	});
+```
+
 Retrieve the Stream URL for a song by track.storeId (All Access songs only!!!)
 ```
     pm.getStreamUrl("Thvfmp2be3c7kbp6ny4arxckz54", console.log);
