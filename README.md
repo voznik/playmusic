@@ -93,7 +93,7 @@ Retrieve Playlists
 
 Get favorite songs
 ```
-	pm.getFavotites(function(err, data) {
+	pm.getFavorites(function(err, data) {
 		console.log(data.track);
 	});
 ```

@@ -629,7 +629,7 @@ PlayMusic.prototype.getStationTracks = function(stationId, tracks, callback) {
     });
 };
 
-PlayMusic.prototype.getFavotites = function(callback) {
+PlayMusic.prototype.getFavorites = function(callback) {
     this.request({
         method: "POST",
         contentType: "application/json",
@@ -646,5 +646,8 @@ PlayMusic.prototype.getFavotites = function(callback) {
         callback(null, body);
     });
 };
+
+// So we don't break things using "getFavotites"
+PlayMusic.prototype.getFavotites = PlayMusic.prototype.getFavorites;
 
 module.exports = exports = PlayMusic;
