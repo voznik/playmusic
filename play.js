@@ -130,7 +130,7 @@ PlayMusic.prototype.init = function(config, callback) {
                 that._deviceId = devices[0].id.slice(2);
                 if(typeof callback === "function") callback();
             } else {
-                if(typeof callback === "function") callback(new Error("Unable to find a usable device on your account, access from a mobile device and try again"));
+                if(typeof callback === "function") callback();
             }
         });
 
@@ -270,6 +270,11 @@ PlayMusic.prototype.getLibrary = PlayMusic.prototype.getAllTracks = function(opt
  * @param callback function(err, streamUrl) - success callback
  */
 PlayMusic.prototype.getStreamUrl = function (id, callback) {
+    if(!this._deviceId) {
+      callback(new Error("Unable to find a usable device on your account, access from a mobile device and try again"));
+      return;
+    }
+
     var that = this;
     var salt = pmUtil.salt(13);
     var sig = CryptoJS.HmacSHA1(id + salt, this._key).toString(pmUtil.Base64);
