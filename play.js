@@ -373,6 +373,35 @@ PlayMusic.prototype.addPlayList = function (playlistName, callback) {
 };
 
 /**
+* Updates a playlist's metadata
+*
+* @param playlistId string - the playlist id
+* @param updates object - data to update the playlist with
+* @param callback function(err, mutationStatus) - success callback
+*/
+PlayMusic.prototype.updatePlayListMeta = function (playlistId, updates, callback) {
+    var that = this;
+    var mutations = [
+    {
+        "update": {
+            "id": playlistId,
+            "name": updates.name || null,
+            "description": updates.description || null,
+            "shareState": updates.shareState || null
+        }
+    }
+    ];
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'playlistbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error updating playlist metadata " + err) : null, body);
+    });
+};
+
+/**
 * Adds a track to end of a playlist.
 *
 * @param songId int - the song id
