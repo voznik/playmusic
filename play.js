@@ -375,32 +375,36 @@ PlayMusic.prototype.addPlayList = function (playlistName, callback) {
 /**
 * Adds a track to end of a playlist.
 *
-* @param songId int - the song id
+* @param songId string - the song id. Or an array of song ids
 * @param playlistId int - the playlist id
 * @param callback function(err, mutationStatus) - success callback
 */
-PlayMusic.prototype.addTrackToPlayList = function (songId, playlistId, callback) {
+PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback) {
     var that = this;
-    var mutations = [
-        {
-            "create": {
-                "clientId": uuid.v1(),
-                "creationTimestamp": "-1",
-                "deleted": "false",
-                "lastModifiedTimestamp": "0",
-                "playlistId": playlistId,
-                "source": (songId.indexOf("T") === 0 ? "2" : "1"),
-                "trackId": songId
+    var songIdsArray = songIds.constructor === Array ? songIds : [songIds];
+    var mutations = [];
+    songIdsArray.forEach(function(songId) {
+        mutations.push(
+            {
+                "create": {
+                    "clientId": uuid.v1(),
+                    "creationTimestamp": "-1",
+                    "deleted": "false",
+                    "lastModifiedTimestamp": "0",
+                    "playlistId": playlistId,
+                    "source": (songId.indexOf("T") === 0 ? "2" : "1"),
+                    "trackId": songId
+                }
             }
-        }
-    ];
+        );
+    });
     this.request({
         method: "POST",
         contentType: "application/json",
         url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
         data: JSON.stringify({"mutations": mutations})
     }, function(err, body) {
-        callback(err ? new Error("error adding a track to playlist: " + err) : null, body);
+        callback(err ? new Error("error adding tracks to playlist: " + err) : null, body);
     });
 };
 
@@ -432,14 +436,18 @@ PlayMusic.prototype.incrementTrackPlaycount = function (songId, callback) {
 };
 
 /**
-* Removes given entry id from playlist entries
+* Removes given entry ids from playlist entries
 *
-* @param entryId int - the entry id. You can get this from getPlayListEntries
+* @param entryId string - the entry id. Or an array of entry ids. You can get this from getPlayListEntries
 * @param callback function(err, mutationStatus) - success callback
 */
-PlayMusic.prototype.removePlayListEntry = function (entryId, callback) {
+PlayMusic.prototype.removePlayListEntry = function (entryIds, callback) {
     var that = this;
-    var mutations = [ { "delete": entryId } ];
+    var entryIdsArray = entryIds.constructor === Array ? entryIds : [entryIds];
+    var mutations = [];
+    entryIdsArray.forEach(function(entryId) {
+        mutations.push({ "delete": entryId });
+    });
 
     this.request({
         method: "POST",
@@ -447,7 +455,7 @@ PlayMusic.prototype.removePlayListEntry = function (entryId, callback) {
         url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
         data: JSON.stringify({"mutations": mutations})
     }, function(err, body) {
-        callback(err ? new Error("error removing playlist entry: " + err) : null, body);
+        callback(err ? new Error("error removing playlist entries: " + err) : null, body);
     });
 };
 
