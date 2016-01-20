@@ -381,7 +381,7 @@ PlayMusic.prototype.addPlayList = function (playlistName, callback) {
 */
 PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback) {
     var that = this;
-    var songIdsArray = songIds.constructor === Array ? songIds : [songIds];
+    var songIdsArray = Array.isArray(songIds) ? songIds : [songIds];
     var mutations = [];
     songIdsArray.forEach(function(songId) {
         mutations.push(
@@ -443,7 +443,7 @@ PlayMusic.prototype.incrementTrackPlaycount = function (songId, callback) {
 */
 PlayMusic.prototype.removePlayListEntry = function (entryIds, callback) {
     var that = this;
-    var entryIdsArray = entryIds.constructor === Array ? entryIds : [entryIds];
+    var entryIdsArray = Array.isArray(entryIds) ? entryIds : [entryIds];
     var mutations = [];
     entryIdsArray.forEach(function(entryId) {
         mutations.push({ "delete": entryId });
