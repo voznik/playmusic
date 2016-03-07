@@ -21,7 +21,7 @@ How to Use
 ----
 
 Initialization
-```
+```js
 var PlayMusic = require('playmusic');
 var pm = new PlayMusic();
 pm.init({email: "email@address.com", password: "password"}, function(err) {
@@ -32,7 +32,7 @@ pm.init({email: "email@address.com", password: "password"}, function(err) {
 
 You may also call init with a master token either extracted from an existing android device or created by calling pm.login.
 
-```
+```js
 var PlayMusic = require('playmusic');
 var pm = new PlayMusic();
 pm.init({androidId: "16 DIGIT HEX", masterToken: "oauth2rt_1/..."}, function(err) {
@@ -43,7 +43,7 @@ pm.init({androidId: "16 DIGIT HEX", masterToken: "oauth2rt_1/..."}, function(err
 
 To create a master token, call pm.login.  if you do not provide an androidId, one will be generated.  The callback function will be given an object containing "masterToken" and "androidId".  This object can be saved and passed to init on future calls.
 
-```
+```js
 var PlayMusic = require('playmusic');
 var pm = new PlayMusic();
 pm.login({email: "email@address.com", password: "password", androidId: "16 DIGIT HEX"}, function(err) {
@@ -53,7 +53,7 @@ pm.login({email: "email@address.com", password: "password", androidId: "16 DIGIT
 ```
 
 Retrieve list of all tracks in your library (uploaded tracks _and_ tracks added to library from All Access)
-```
+```js
     pm.getAllTracks(function(err, library) {
         var song = library.data.items.pop();
         console.log(song);
@@ -64,7 +64,7 @@ Retrieve list of all tracks in your library (uploaded tracks _and_ tracks added 
 ```
 
 Search for a song
-```
+```js
     pm.search("bastille lost fire", 5, function(err, data) { // max 5 results
         var song = data.entries.sort(function(a, b) { // sort by match score
             return a.score < b.score;
@@ -79,7 +79,7 @@ Search for a song
 ```
 
 Retrieve Playlists
-```
+```js
     // gets all playlists
     pm.getPlayLists(function(err, data) {
         console.log(data.data.items);
@@ -92,24 +92,24 @@ Retrieve Playlists
 ```
 
 Get favorite songs
-```
+```js
 	pm.getFavorites(function(err, data) {
 		console.log(data.track);
 	});
 ```
 
 Retrieve the Stream URL for a song by track.storeId (All Access songs only!!!)
-```
+```js
     pm.getStreamUrl("Thvfmp2be3c7kbp6ny4arxckz54", console.log);
 ```
 
 Retrieve the Stream URL for a song by track.id (uploaded songs only!!!)
-```
+```js
     pm.getStreamUrl("84df1e4e-6b76-3147-9a78-a44becc28dc5", console.log);
 ```
 
 Retrieve information about an album or artist (All Access Only!!!)
-```
+```js
     // getArtist - artistId, albumList, topTrackCount, relatedArtistCount[, callback]
     pm.getArtist('Ak6zkmv2zbbsaxl63cgsnx5ttcm', true, 2, 2);
 
@@ -119,14 +119,14 @@ Retrieve information about an album or artist (All Access Only!!!)
 
 Get Google Play Music Settings
 
-```
+```js
     pm.getSettings();
 ```
 
 More Examples:
 ===
 
-```
+```js
 npm install playmusic
 node
 
