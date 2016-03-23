@@ -464,6 +464,28 @@ PlayMusic.prototype.incrementTrackPlaycount = function (songId, callback) {
     });
 };
 
+/* Change metadata of a track a library 
+* Currently only support changing rating 
+* You need to change a song object with a different rating value:
+* 5 = thumb up, 1 = thumb down, 0 = no thumb 
+* @param song object - the track dictionnary. You can get from getAllAccessTrack or from getLibrary
+* @param callback function(err, success) - success callback
+*/
+PlayMusic.prototype.changeTrackMetadata = function (song, callback) {
+
+    var that = this;
+    var mutations = [ { "update": song } ];
+
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'trackbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error changing rating track: " + err) : null, body);
+    });
+}
+
 /**
 * Removes given entry ids from playlist entries
 *
