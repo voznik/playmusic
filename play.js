@@ -464,10 +464,10 @@ PlayMusic.prototype.incrementTrackPlaycount = function (songId, callback) {
     });
 };
 
-/* Change metadata of a track a library 
-* Currently only support changing rating 
+/* Change metadata of a track a library
+* Currently only support changing rating
 * You need to change a song object with a different rating value:
-* 5 = thumb up, 1 = thumb down, 0 = no thumb 
+* 5 = thumb up, 1 = thumb down, 0 = no thumb
 * @param song object - the track dictionnary. You can get from getAllAccessTrack or from getLibrary
 * @param callback function(err, success) - success callback
 */
@@ -515,11 +515,35 @@ PlayMusic.prototype.removePlayListEntry = function (entryIds, callback) {
  *
  * @param callback function(err, playlistEntries) - success callback
  */
-PlayMusic.prototype.getPlayListEntries = function (callback) {
+PlayMusic.prototype.getPlayListEntries = function (opts, callback) {
     var that = this;
+
+    // If first parameter is a callback, shift it over to the second param
+    if (typeof opts === "function") {
+        callback = opts;
+        opts = {};
+    }
+    // Set options defaults
+    opts.limit = opts.limit || 1000;
+
+    // Request body data
+    var data = { "max-results": opts.limit };
+    // Add 'start-token' if a continuation token was provided
+    if (!!opts.nextPageToken) {
+        data["start-token"] = opts.nextPageToken;
+    }
+
+    var url = this._baseURL + 'plentryfeed';
+    if(opts.shareToken) {
+        url = url + '/shared'
+        data['shareToken'] = opts.shareToken
+    }
+
     this.request({
         method: "POST",
-        url: this._baseURL + 'plentryfeed'
+        url: this._baseURL + 'plentryfeed',
+        contentType: "application/json",
+        data: JSON.stringify(data)
     }, function(err, body) {
         callback(err ? new Error("error getting playlist results: " + err) : null, body);
     });
