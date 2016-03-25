@@ -513,6 +513,7 @@ PlayMusic.prototype.removePlayListEntry = function (entryIds, callback) {
 /**
  * Returns tracks on all playlists.
  *
+ * @param opts Object - parameters
  * @param callback function(err, playlistEntries) - success callback
  */
 PlayMusic.prototype.getPlayListEntries = function (opts, callback) {
@@ -527,16 +528,10 @@ PlayMusic.prototype.getPlayListEntries = function (opts, callback) {
     opts.limit = opts.limit || 1000;
 
     // Request body data
-    var data = { "max-results": opts.limit };
+    var data = {"max-results": opts.limit};
     // Add 'start-token' if a continuation token was provided
     if (!!opts.nextPageToken) {
         data["start-token"] = opts.nextPageToken;
-    }
-
-    var url = this._baseURL + 'plentryfeed';
-    if(opts.shareToken) {
-        url = url + '/shared'
-        data['shareToken'] = opts.shareToken
     }
 
     this.request({
@@ -544,7 +539,46 @@ PlayMusic.prototype.getPlayListEntries = function (opts, callback) {
         url: this._baseURL + 'plentryfeed',
         contentType: "application/json",
         data: JSON.stringify(data)
-    }, function(err, body) {
+    }, function (err, body) {
+        callback(err ? new Error("error getting playlist results: " + err) : null, body);
+    });
+};
+
+
+/**
+ * Returns tracks on shared playlist.
+ *
+ * @param opts Object - parameters
+ * @param callback function(err, playlistEntries) - success callback
+ */
+PlayMusic.prototype.getSharedPlayListEntries = function (opts, callback) {
+    var that = this;
+
+    // If first parameter is a callback, shift it over to the second param
+    if (typeof opts === "function") {
+        callback = opts;
+        opts = {};
+    }
+    // Set options defaults
+    opts.limit = opts.limit || 1000;
+
+    // Request body data
+    var data = {"max-results": opts.limit};
+    // Add 'start-token' if a continuation token was provided
+    if (!!opts.nextPageToken) {
+        data["start-token"] = opts.nextPageToken;
+    }
+
+    data['shareToken'] = opts.shareToken;
+
+    this.request({
+        method: "POST",
+        url: this._baseURL + 'plentries/shared',
+        contentType: "application/json",
+        data: JSON.stringify({
+            'entries': [data]
+        })
+    }, function (err, body) {
         callback(err ? new Error("error getting playlist results: " + err) : null, body);
     });
 };
