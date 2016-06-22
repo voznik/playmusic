@@ -16,7 +16,6 @@ var CryptoJS = require("crypto-js");
 var uuid = require('node-uuid');
 var util = require('util');
 var crypto = require('crypto');
-var lame = require('lame');
 //var async = require('async');
 
 var pmUtil = {};
@@ -308,7 +307,7 @@ PlayMusic.prototype.getStreamUrl = function (id, callback) {
 };
 
 /**
- * Opens and returns a PCM signed 16-bit LE stream for a track.
+ * Opens and returns a stream object
  *
  * @param id string - track id, hyphenated is preferred, but "nid" will work for all access tracks (not uploaded ones)
  * @param callback function(stream) - success callback
@@ -317,10 +316,8 @@ PlayMusic.prototype.getStream = function(id, callback) {
     this.getStreamUrl(id, function(err, url) {
         if(err) return callback(err);
         https.get(url, function(stream) {
-            stream = stream.pipe(lame.Decoder());
             callback(null, stream);
         })
-
     })
 }
 
