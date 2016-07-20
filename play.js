@@ -123,11 +123,15 @@ PlayMusic.prototype.init = function(config, callback) {
             that._settings = response.settings;
             that._allAccess = response.settings.entitlementInfo.isSubscription;
             var devices = response.settings.uploadDevice.filter(function(d) {
-                return d.deviceType === 2;
+                return d.deviceType === 2 || d.deviceType === 3;
             });
 
             if(devices.length > 0) {
-                that._deviceId = devices[0].id.slice(2);
+                var id = devices[0].id;
+                if (devices[0].deviceType === 2) {
+                    id = id.slice(2);
+                }
+                that._deviceId = id;
                 if(typeof callback === "function") callback();
             } else {
                 if(typeof callback === "function") callback();
