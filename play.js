@@ -431,20 +431,34 @@ PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback
     var that = this;
     var songIdsArray = Array.isArray(songIds) ? songIds : [songIds];
     var mutations = [];
-    songIdsArray.forEach(function(songId) {
+    var prevId, currId, nextId;
+    prevId = null;
+    currId = uuid.v1();
+    nextId = uuid.v1();
+    songIdsArray.forEach(function(songId, index) {
+        var mutation = {
+            "clientId": currId,
+            "creationTimestamp": "-1",
+            "deleted": "false",
+            "lastModifiedTimestamp": "0",
+            "playlistId": playlistId,
+            "source": (songId.indexOf("T") === 0 ? "2" : "1"),
+            "trackId": songId
+        }
+        if (index > 0) {
+            mutation.precedingEntryId = prevId;
+        }
+        if (index < songIdsArray.length - 1) {
+            mutation.followingEntryId = nextId;
+        }
         mutations.push(
             {
-                "create": {
-                    "clientId": uuid.v1(),
-                    "creationTimestamp": "-1",
-                    "deleted": "false",
-                    "lastModifiedTimestamp": "0",
-                    "playlistId": playlistId,
-                    "source": (songId.indexOf("T") === 0 ? "2" : "1"),
-                    "trackId": songId
-                }
+                "create": mutation
             }
         );
+        prevId = currId;
+        currId = nextId;
+        nextId = uuid.v1();
     });
     this.request({
         method: "POST",
