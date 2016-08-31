@@ -10,6 +10,15 @@ NOTE:  As of version 2.0, all callbacks are node.js style, with the first param 
 
 This project is not endorsed by of affiliated with Google in any way.
 
+
+Seeking Help!
+----
+
+I'm creating a few issues for items that I'd like to have added, but haven't had time to add.  If anyone wants to volunteer to submit PRs for them, or is interested in becoming a direct contributor to the project, please comment on those issues or e-mail me.
+
+Thanks!
+
+
 Authentication
 ----
 
