@@ -336,6 +336,7 @@ PlayMusic.prototype.search = function (text, maxResults, callback) {
     var that = this;
     var qp = {
         q: text,
+        ct: '1,2,3,4,5,6,7,8,9',
         "max-results": maxResults
     };
     var qstring = querystring.stringify(qp);
@@ -679,6 +680,8 @@ PlayMusic.prototype._getSeed = function(seedId, type) {
         seed = {albumId: seedId, seedType: 4};
     } else if(type === "genre") {
         seed = {genreId: seedId, seedType: 5};
+    } else if(type === "station") {
+        seed = {curatedStationId: seedId, seedType: 9};
     }
     return seed;
 };
