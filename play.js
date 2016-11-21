@@ -680,6 +680,8 @@ PlayMusic.prototype._getSeed = function(seedId, type) {
         seed = {albumId: seedId, seedType: 4};
     } else if(type === "genre") {
         seed = {genreId: seedId, seedType: 5};
+    } else if(type === "station") {
+        seed = {curatedStationId: seedId, seedType: 9};
     }
     return seed;
 };
