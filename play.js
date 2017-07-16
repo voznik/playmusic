@@ -16,7 +16,7 @@ var CryptoJS = require("crypto-js");
 var uuid = require('node-uuid');
 var util = require('util');
 var crypto = require('crypto');
-//var async = require('async');
+var encryptLogin = require('./lib/encryptLogin');
 
 var pmUtil = {};
 pmUtil.parseKeyValues = function(body) {
@@ -159,8 +159,8 @@ PlayMusic.prototype._oauth =  function (callback) {
     if(this._masterToken) {
         data.Token = this._masterToken;
     } else if(this._password) {
-        data.Passwd = this._password;
-        data.Email = that._email.trim();
+        data.EncryptedPasswd = encryptLogin(this._email, this._password),
+        data.Email = this._email;
 
     } else {
         callback(new Error("You must provide either an email address and password, or a token"));
@@ -178,15 +178,19 @@ PlayMusic.prototype._oauth =  function (callback) {
         callback(err, err ? null : pmUtil.parseKeyValues(data));
     });
 };
+
 PlayMusic.prototype.login =  function (opt, callback) {
+	opt.email = opt.email.trim(); // Trim immediately
+	
     var that = this;
     opt.androidId = opt.androidId || crypto.pseudoRandomBytes(8).toString("hex");
+        
     var data = {
         accountType: "HOSTED_OR_GOOGLE",
-        Email: opt.email.trim(),
+        Email: opt.email,
         has_permission: "1",
         add_account: "1",
-        Passwd: opt.password.trim(),
+        EncryptedPasswd: encryptLogin(opt.email, opt.password),
         service: "ac2dm",
         source: "android",
         androidId: opt.androidId,
