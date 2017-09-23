@@ -92,6 +92,9 @@ PlayMusic.prototype.request = function(options, callback) {
             if(typeof callback === "function") callback(err, body, res);
         });
     });
+    req.on('error',(err)=>{
+        if(typeof callback === "function") callback(err);
+    });
     if(typeof options.data !== "undefined") req.write(options.data);
     req.end();
 };
