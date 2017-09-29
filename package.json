@@ -1,6 +1,6 @@
 {
   "name": "playmusic",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "Node JS Google Play Music API.  Supports All Access",
   "keywords": [
     "gmusic",
