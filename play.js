@@ -92,6 +92,9 @@ PlayMusic.prototype.request = function(options, callback) {
             if(typeof callback === "function") callback(err, body, res);
         });
     });
+    req.on('error',(err)=>{
+        if(typeof callback === "function") callback(err);
+    });
     if(typeof options.data !== "undefined") req.write(options.data);
     req.end();
 };
@@ -397,6 +400,29 @@ PlayMusic.prototype.addPlayList = function (playlistName, callback) {
 };
 
 /**
+* Deletes a playlist
+*
+* @param playlistId string - the playlist id
+* @param callback function(err, mutationStatus) - success callback
+*/
+PlayMusic.prototype.deletePlayList = function (playlistId, callback) {
+    var that = this;
+    var mutations = [
+    {
+        "delete": playlistId
+    }
+    ];
+    this.request({
+        method: "POST",
+        contentType: "application/json",
+        url: this._baseURL + 'playlistbatch?' + querystring.stringify({alt: "json"}),
+        data: JSON.stringify({"mutations": mutations})
+    }, function(err, body) {
+        callback(err ? new Error("error creating playlist " + err) : null, body);
+    });
+};
+
+/**
 * Updates a playlist's metadata
 *
 * @param playlistId string - the playlist id
@@ -426,18 +452,21 @@ PlayMusic.prototype.updatePlayListMeta = function (playlistId, updates, callback
 };
 
 /**
-* Adds a track to end of a playlist.
+* Adds a track to a playlist. By default the track is added to the end.
+* Optionally pass entryBeforeClientId and addAfterClientId to specify a specific position.
 *
 * @param songId string - the song id. Or an array of song ids
 * @param playlistId int - the playlist id
 * @param callback function(err, mutationStatus) - success callback
+* @param entryBeforeClientId - optional clientId of playlist entry where to add song after
+* @param entryAfterClientId - optional clientId of playlist entry where to add song before
 */
-PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback) {
+PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback, entryBeforeClientId, entryAfterClientId) {
     var that = this;
     var songIdsArray = Array.isArray(songIds) ? songIds : [songIds];
     var mutations = [];
     var prevId, currId, nextId;
-    prevId = null;
+    prevId = entryBeforeClientId || null;
     currId = uuid.v1();
     nextId = uuid.v1();
     songIdsArray.forEach(function(songId, index) {
@@ -450,11 +479,13 @@ PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback
             "source": (songId.indexOf("T") === 0 ? "2" : "1"),
             "trackId": songId
         }
-        if (index > 0) {
+        if (prevId) {
             mutation.precedingEntryId = prevId;
         }
         if (index < songIdsArray.length - 1) {
             mutation.followingEntryId = nextId;
+        } else if (entryAfterClientId){
+            mutation.followingEntryId = entryAfterClientId;
         }
         mutations.push(
             {
@@ -475,6 +506,40 @@ PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback
     });
 };
 
+/**
+ * Move the specified entry inbetween two specified entries (identified by their clientIds)
+ *
+ * @param callback function(err, playlistEntries) - success callback
+ */
+PlayMusic.prototype.movePlayListEntry = function(entryToMove, entryBeforeClientId, entryAfterClientId, callback) {
+    var that = this;
+  
+    entryToMove = JSON.parse(JSON.stringify(entryToMove)); // clone fo-real
+  
+    var keysToKeep = ['clientId', 'creationTimestamp', 'deleted', 'id', 'lastModifiedTimestamp', 'playlistId', 'source', 'trackId'];
+  
+    for(var entry in entryToMove) {
+      if (keysToKeep.indexOf(entry) == -1)
+        delete entryToMove[entry];
+    }
+  
+    if (entryBeforeClientId){
+        entryToMove['precedingEntryId'] = entryBeforeClientId;
+    };
+    if (entryAfterClientId){
+        entryToMove['followingEntryId'] = entryAfterClientId;
+    }
+  
+    this.request({
+      method: "POST",
+      contentType: "application/json",
+      url: this._baseURL + 'plentriesbatch?' + querystring.stringify({alt: "json"}),
+      data: JSON.stringify({"mutations" : [{ "update": entryToMove}]})
+    }, function(err, body) {
+      callback(err ? new Error("error getting moving playlist entry: " + err) : null, body);
+    });
+  };
+  
 /**
 * Increments track's playcount
 *
