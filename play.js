@@ -9,6 +9,7 @@
  * Based partially on the work of the Google Play Music resolver for Tomahawk (https://github.com/tomahawk-player/tomahawk-resolvers/blob/master/gmusic/content/contents/code/gmusic.js)
  * and the gmusicapi project by Simon Weber (https://github.com/simon-weber/Unofficial-Google-Music-API/blob/develop/gmusicapi/protocol/mobileclient.py).
  */
+
 var https = require('https');
 var querystring = require('querystring');
 var url = require('url');
@@ -39,7 +40,6 @@ pmUtil.salt = function(len) {
         }('abcdefghijklmnopqrstuvwxyz0123456789'));
     }).join('');
 };
-
 
 var PlayMusic = function() {};
 
@@ -98,7 +98,6 @@ PlayMusic.prototype.request = function(options, callback) {
     if(typeof options.data !== "undefined") req.write(options.data);
     req.end();
 };
-
 
 PlayMusic.prototype.init = function(config, callback) {
     var that = this;
@@ -212,7 +211,6 @@ PlayMusic.prototype.login =  function (opt, callback) {
         callback(err, err ? null : {androidId: opt.androidId, masterToken: response.Token});
     });
 };
-
 
 /**
  * Returns settings / device ids authorized for account.
@@ -647,7 +645,6 @@ PlayMusic.prototype.getPlayListEntries = function (opts, callback) {
     });
 };
 
-
 /**
  * Returns tracks on shared playlist.
  *
@@ -786,7 +783,6 @@ PlayMusic.prototype.getStations = function(callback) {
         callback(err ? new Error("error listing stations: " + err) : null, body);
     });
 };
-
 
 /**
  * Creates a new station
