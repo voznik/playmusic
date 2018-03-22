@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /* Example usage script.
  *
  * Any copyright is dedicated to the Public Domain.
