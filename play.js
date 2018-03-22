@@ -13,7 +13,7 @@ var https = require('https');
 var querystring = require('querystring');
 var url = require('url');
 var CryptoJS = require("crypto-js");
-var uuid = require('node-uuid');
+var uuid = require('uuid');
 var util = require('util');
 var crypto = require('crypto');
 var encryptLogin = require('./lib/encryptLogin');
@@ -184,10 +184,10 @@ PlayMusic.prototype._oauth =  function (callback) {
 
 PlayMusic.prototype.login =  function (opt, callback) {
 	opt.email = opt.email.trim(); // Trim immediately
-	
+
     var that = this;
     opt.androidId = opt.androidId || crypto.pseudoRandomBytes(8).toString("hex");
-        
+
     var data = {
         accountType: "HOSTED_OR_GOOGLE",
         Email: opt.email,
@@ -513,23 +513,23 @@ PlayMusic.prototype.addTrackToPlayList = function (songIds, playlistId, callback
  */
 PlayMusic.prototype.movePlayListEntry = function(entryToMove, entryBeforeClientId, entryAfterClientId, callback) {
     var that = this;
-  
+
     entryToMove = JSON.parse(JSON.stringify(entryToMove)); // clone fo-real
-  
+
     var keysToKeep = ['clientId', 'creationTimestamp', 'deleted', 'id', 'lastModifiedTimestamp', 'playlistId', 'source', 'trackId'];
-  
+
     for(var entry in entryToMove) {
       if (keysToKeep.indexOf(entry) == -1)
         delete entryToMove[entry];
     }
-  
+
     if (entryBeforeClientId){
         entryToMove['precedingEntryId'] = entryBeforeClientId;
     };
     if (entryAfterClientId){
         entryToMove['followingEntryId'] = entryAfterClientId;
     }
-  
+
     this.request({
       method: "POST",
       contentType: "application/json",
@@ -539,7 +539,7 @@ PlayMusic.prototype.movePlayListEntry = function(entryToMove, entryBeforeClientI
       callback(err ? new Error("error getting moving playlist entry: " + err) : null, body);
     });
   };
-  
+
 /**
 * Increments track's playcount
 *

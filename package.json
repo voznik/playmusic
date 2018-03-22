@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "crypto-js": ">= 3.1",
-    "node-uuid": "~1.4.1",
-    "rsa-pem-from-mod-exp": "^0.8.4"
+    "rsa-pem-from-mod-exp": "^0.8.4",
+    "uuid": "^3.2.1"
   }
 }
